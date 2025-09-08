@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Ledgerly</title>
+  <script src="https://unpkg.com/alpinejs" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    document.addEventListener('pywebviewready', () => {
+        console.log('PyWebview API ready!');
+        // Safe to call backend methods now
+        $store.ledgerly.init();
+    });
+  </script>
+
+  <style>
+    x-cloak {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100 text-gray-900" x-data>
+
+  <script>
+      document.addEventListener('alpine:init', () => {
+        Alpine.store('ledgerly', {
+          version: '',
+          accounts: [{ id: 1, name: 'Simon', type: 'checking', current_balance: 0 }, { id: 2, name: 'Simon', type: 'savings', current_balance: 50 }],
+          transactions: [{ id: 1, account_id: 1, type: 'expense', amount: 20, category: 'groceries', date: 'Sun Sep 07 2025 14:12:37 GMT-0400 (Eastern Daylight Time)' }],
+          transactionForm: { account_id: null, type: 'expense', amount: 0, category: '' },
+
+          async init() {
+            await this.loadInfo();
+            await this.loadAccounts();
+            await this.loadTransactions();
+          },
+
+          async loadInfo() {
+            let res = await window.pywebview.api.get_info()
+            this.version = res.version
+          },
+
+          async loadAccounts() {
+            this.accounts = await window.pywebview.api.get_accounts();
+            if (this.accounts.length > 0 && !this.transactionForm.account_id) {
+              this.transactionForm.account_id = this.accounts[0].id;
+            }
+          },
+
+          async loadTransactions() {
+            this.transactions = await window.pywebview.api.get_recent_transactions();
+          },
+
+          async addTransaction() {
+            await window.pywebview.api.add_transaction(
+              this.transactionForm.account_id,
+              this.transactionForm.type,
+              parseFloat(this.transactionForm.amount),
+              this.transactionForm.category,
+              new Date()
+            );
+            this.transactionForm.amount = 0;
+            this.transactionForm.category = '';
+            await this.loadAccounts();
+            await this.loadTransactions();
+          },
+
+          formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'CAD' }).format(amount);
+          },
+
+          formatDate(dateStr) {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString();
+          },
+
+          getAccountName(account_id) {
+            const acc = this.accounts.find(a => a.id === account_id);
+            return acc ? acc.name : '';
+          }
+        });
+      });
+    
+      window.addEventListener('pywebviewready', () => {
+        Alpine.store('ledgerly').init();
+    })
+  </script>
+
+  <div class="p-6">
+    <!-- Header -->
+    <header class="mb-6 flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <img class="size-16 rounded" src="assets/logo.svg" alt="logo">
+        <h1 class="text-3xl font-bold">Ledgerly</h1>
+      </div>
+      <div class="text-gray-600" x-text="'v' + $store.ledgerly.version"></div>
+    </header>
+
+    <!-- Accounts -->
+    <section class="mb-8" x-data>
+      <h2 class="text-2xl font-semibold mb-4">Accounts</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <template x-if="$store.ledgerly.accounts.length > 0">
+          <template x-for="account in $store.ledgerly.accounts" :key="account.id">
+            <div class="bg-white rounded-lg shadow p-4">
+              <h3 class="font-medium text-lg" x-text="account.name"></h3>
+              <p class="text-gray-500" x-text="account.type"></p>
+              <p class="mt-2 text-xl font-bold" x-text="$store.ledgerly.formatCurrency(account.current_balance)"></p>
+            </div>
+          </template>
+        </template>
+        <template x-if="$store.ledgerly.accounts.length === 0">
+          <div class="col-span-1 md:col-span-3 bg-white rounded-lg shadow p-4 text-center text-gray-500">
+            No accounts found. Please add an account.
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- Quick Add Transaction -->
+    <section class="mb-8 bg-white rounded-lg shadow p-4">
+      <h2 class="text-2xl font-semibold mb-4">Add Transaction</h2>
+      <template x-if="$store.ledgerly.accounts.length > 0">
+        <form @submit.prevent="$store.ledgerly.addTransaction()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <select x-model="$store.ledgerly.transactionForm.account_id" class="border rounded px-3 py-2">
+            <template x-for="account in $store.ledgerly.accounts" :key="account.id">
+
+              <option :value="account.id" x-text="account.name"></option>
+            </template>
+          </select>
+
+          <input type="number" required x-model="$store.ledgerly.transactionForm.amount" placeholder="Amount" class="border rounded px-3 py-2">
+
+          <select x-model="$store.ledgerly.transactionForm.type" class="border rounded px-3 py-2">
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+
+          <input type="text" x-model="$store.ledgerly.transactionForm.category" placeholder="Category" class="border rounded px-3 py-2 md:col-span-2">
+
+          <button type="submit" class="bg-blue-400 text-white rounded px-4 py-2 hover:bg-blue-600">Add</button>
+        </form>
+      </template>
+      <template x-if="$store.ledgerly.accounts.length === 0">
+        <div class="text-red-500 font-medium">
+          You must create an account before adding transactions.
+        </div>
+      </template>
+    </section>
+
+    <!-- Transactions -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-4">Recent Transactions</h2>
+      <table class="min-w-full bg-white rounded-lg shadow">
+        <thead>
+          <tr class="bg-gray-200 text-left">
+            <th class="px-4 py-2">Date</th>
+            <th class="px-4 py-2">Account</th>
+            <th class="px-4 py-2">Type</th>
+            <th class="px-4 py-2">Category</th>
+            <th class="px-4 py-2">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="tx in $store.ledgerly.transactions" :key="tx.id">
+            <tr class="border-t">
+              <td class="px-4 py-2" x-text="$store.ledgerly.formatDate(tx.date)"></td>
+              <td class="px-4 py-2" x-text="$store.ledgerly.getAccountName(tx.account_id)"></td>
+              <td class="px-4 py-2" x-text="tx.type"></td>
+              <td class="px-4 py-2" x-text="tx.category"></td>
+              <td class="px-4 py-2 font-medium" x-text="$store.ledgerly.formatCurrency(tx.amount)"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+
+</body>
+
+</html>
