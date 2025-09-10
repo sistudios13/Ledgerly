@@ -52,3 +52,19 @@ def w_add_transaction(account_id, transaction_type, amount, category, date):
             return False
     else:
         return False
+
+def w_add_account(name, category, initial_balance):
+    default_currency = cfg.DEFAULT_CURRENCY
+    params = (name, category, initial_balance, initial_balance, default_currency)
+    if len(name) > 0:
+        try:
+            cur.execute(
+                "INSERT INTO accounts (name, type, starting_balance, current_balance, currency) VALUES (?, ?, ?, ?, ?)",
+                params)
+            con.commit()
+            return True
+        except Exception as e:
+            print(e)
+            return False
+    else:
+        return False

@@ -14,3 +14,6 @@ class LedgerlyApi:
 
     def add_transaction(self, account_id, transaction_type, amount, category, date):
         return dbm.w_add_transaction(account_id, transaction_type, amount, category, date)
+
+    def add_account(self, name, category, initial_balance):
+        return dbm.w_add_account(name, category, initial_balance)

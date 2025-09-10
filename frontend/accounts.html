@@ -34,7 +34,7 @@
                 closeAddModal() { this.showAddModal = false },
 
                 async addAccount() {
-                    const success = await window.pywebview.api.add_account(this.form)
+                    const success = await window.pywebview.api.add_account(this.form.name, this.form.category, parseFloat(this.form.balance))
                     if (success) {
                         window.dispatchEvent(new CustomEvent('notify', {
                             detail: { variant: 'success', title: 'Account Added', message: `${this.form.name} created successfully.` }
@@ -45,6 +45,7 @@
                         window.dispatchEvent(new CustomEvent('notify', {
                             detail: { variant: 'danger', title: 'Error', message: 'Failed to create account.' }
                         }))
+                        this.closeAddModal()
                     }
                 }
             }
@@ -52,14 +53,21 @@
     </script>
 
     <div class="p-6 space-y-6">
-
         <!-- Header -->
-        <div class="flex items-center justify-between">
-            <h1 class="text-2xl font-bold text-gray-800">Accounts</h1>
-            <button @click="openAddModal" class="px-4 py-2 bg-blue-400 text-white rounded-lg hover:bg-blue-600">
+        <header class="mb-6 flex justify-between items-center">
+          <div class="flex items-center space-x-4">
+            <img class="size-12 rounded" src="assets/logo.svg" alt="logo">
+            <h1 class="text-2xl font-bold">Ledgerly</h1>
+          </div>
+          <div class="flex  items-center font-medium justify-center gap-4">
+            <a href="index.html" >Dashboard</a>
+            <a href="accounts.html" class="underline underline-offset-2">Accounts</a>
+            <a href="transactions.html">Transactions</a>
+          </div>
+          <button @click="openAddModal" class="px-4 py-2 w-[161px] bg-blue-400 text-white rounded-lg hover:bg-blue-600">
                 + Add Account
             </button>
-        </div>
+        </header>
 
         <!-- Accounts List -->
         <template x-if="accounts.length > 0">
@@ -71,7 +79,7 @@
                             <p class="text-sm text-gray-500" x-text="account.category"></p>
                         </div>
                         <div class="text-right">
-                            <p class="text-xl font-bold text-gray-900" x-text="`$${account.current_balance.toFixed(2)}`"></p>
+                            <p class="text-xl font-bold" :class="account.current_balance <= 0 ? 'text-red-600' : 'text-gray-900'" x-text="`$${account.current_balance.toFixed(2)}`"></p>
                         </div>
                     </div>
                 </template>
@@ -90,7 +98,7 @@
     </div>
     <!-- Add Account Modal -->
     <div x-cloak x-show="showAddModal" class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center bg-black/50">
-        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md" @click.away="closeAddModal">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
             <h2 class="text-xl font-semibold mb-4">Add Account</h2>
             <form @submit.prevent="addAccount">
                 <div class="mb-4">
