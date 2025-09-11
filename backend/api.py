@@ -17,3 +17,6 @@ class LedgerlyApi:
 
     def add_account(self, name, category, initial_balance):
         return dbm.w_add_account(name, category, initial_balance)
+
+    def delete_account(self, a_id):
+        return dbm.w_delete_account(a_id)

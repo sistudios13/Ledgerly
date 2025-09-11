@@ -2,16 +2,16 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Ledgerly</title>
-    <script src="https://unpkg.com/alpinejs" defer></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <title>Ledgerly</title>
+  <script src="https://unpkg.com/alpinejs" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <style>
-        x-cloak {
-            display: none !important;
-        }
-    </style>
+  <style>
+    x-cloak {
+      display: none !important;
+    }
+  </style>
 </head>
 
 <body class="bg-gray-100 text-gray-900" x-data="accountsPage()" x-init="
@@ -19,114 +19,155 @@
     init();
   });
 ">
-    <script>
-        function accountsPage() {
-            return {
-                accounts: [],
-                showAddModal: false,
-                form: { name: '', category: '', balance: 0 },
+  <script>
+    function accountsPage() {
+      return {
+        accounts: [],
+        showAddModal: false,
+        showDeleteModal: false,
+        form: { name: '', category: '', balance: 0 },
+        deleteForm: { id: null },
 
-                async init() {
-                    let res = await window.pywebview.api.get_accounts()
-                    this.accounts = res
-                },
-                openAddModal() { this.showAddModal = true },
-                closeAddModal() { this.showAddModal = false },
+        async init() {
+          let res = await window.pywebview.api.get_accounts()
+          this.accounts = res
+        },
+        openAddModal() { this.showAddModal = true },
+        closeAddModal() { this.showAddModal = false },
+        openDeleteModal(accountId) {
+          this.showDeleteModal = true
+          this.deleteForm.id = accountId
+        },
+        closeDeleteModal() { this.showDeleteModal = false },
 
-                async addAccount() {
-                    const success = await window.pywebview.api.add_account(this.form.name, this.form.category, parseFloat(this.form.balance))
-                    if (success) {
-                        window.dispatchEvent(new CustomEvent('notify', {
-                            detail: { variant: 'success', title: 'Account Added', message: `${this.form.name} created successfully.` }
-                        }))
-                        this.accounts = await window.pywebview.api.get_accounts()
-                        this.closeAddModal()
-                    } else {
-                        window.dispatchEvent(new CustomEvent('notify', {
-                            detail: { variant: 'danger', title: 'Error', message: 'Failed to create account.' }
-                        }))
-                        this.closeAddModal()
-                    }
-                }
-            }
+        async addAccount() {
+          const success = await window.pywebview.api.add_account(this.form.name, this.form.category, parseFloat(this.form.balance))
+          if (success) {
+            window.dispatchEvent(new CustomEvent('notify', {
+              detail: { variant: 'success', title: 'Account Added', message: `${this.form.name} created successfully.` }
+            }))
+            this.accounts = await window.pywebview.api.get_accounts()
+            this.closeAddModal()
+          } else {
+            window.dispatchEvent(new CustomEvent('notify', {
+              detail: { variant: 'danger', title: 'Error', message: 'Failed to create account.' }
+            }))
+            this.closeAddModal()
+          }
+        },
+
+        async deleteAccount() {
+          const success = await window.pywebview.api.delete_account(this.deleteForm.id)
+          if (success) {
+            window.dispatchEvent(new CustomEvent('notify', {
+              detail: { variant: 'success', title: 'Account Deleted', message: 'Account deleted successfully.' }
+            }))
+            this.accounts = await window.pywebview.api.get_accounts()
+            this.deleteForm.id = null
+            this.closeDeleteModal()
+          } else {
+            window.dispatchEvent(new CustomEvent('notify', {
+              detail: { variant: 'danger', title: 'Error', message: 'Failed to delete account.' }
+            }))
+            this.deleteForm.id = null
+            this.closeDeleteModal()
+          }
         }
-    </script>
+      }
+    }
+  </script>
 
-    <div class="p-6 space-y-6">
-        <!-- Header -->
-        <header class="mb-6 flex justify-between items-center">
-          <div class="flex items-center space-x-4">
-            <img class="size-12 rounded" src="assets/logo.svg" alt="logo">
-            <h1 class="text-2xl font-bold">Ledgerly</h1>
-          </div>
-          <div class="flex  items-center font-medium justify-center gap-4">
-            <a href="index.html" >Dashboard</a>
-            <a href="accounts.html" class="underline underline-offset-2">Accounts</a>
-            <a href="transactions.html">Transactions</a>
-          </div>
-          <button @click="openAddModal" class="px-4 py-2 w-[161px] bg-blue-400 text-white rounded-lg hover:bg-blue-600">
-                + Add Account
-            </button>
-        </header>
+  <div class="p-6 space-y-6">
+    <!-- Header -->
+    <header class="mb-6 flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <img class="size-12 rounded" src="assets/logo.svg" alt="logo">
+        <h1 class="text-2xl font-bold">Ledgerly</h1>
+      </div>
+      <div class="flex  items-center font-medium justify-center gap-4">
+        <a href="index.html">Dashboard</a>
+        <a href="accounts.html" class="underline underline-offset-2">Accounts</a>
+        <a href="transactions.html">Transactions</a>
+      </div>
+      <button @click="openAddModal" class="px-4 py-2 w-[161px] bg-blue-400 text-white rounded-lg hover:bg-blue-600">
+        + Add Account
+      </button>
+    </header>
 
-        <!-- Accounts List -->
-        <template x-if="accounts.length > 0">
-            <div class="grid md:grid-cols-2 gap-4">
-                <template x-for="account in accounts" :key="account.id">
-                    <div class="rounded-lg border p-4 bg-white shadow flex justify-between items-center">
-                        <div>
-                            <h2 class="text-lg font-semibold text-gray-700" x-text="account.name"></h2>
-                            <p class="text-sm text-gray-500" x-text="account.category"></p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-xl font-bold" :class="account.current_balance <= 0 ? 'text-red-600' : 'text-gray-900'" x-text="`$${account.current_balance.toFixed(2)}`"></p>
-                        </div>
-                    </div>
-                </template>
+    <!-- Accounts List -->
+    <template x-if="accounts.length > 0">
+      <div class="grid md:grid-cols-2 gap-4">
+        <template x-for="account in accounts" :key="account.id">
+          <div class="rounded-lg border p-4 bg-white shadow flex justify-between items-center">
+            <div>
+              <h2 class="text-xl font-semibold text-gray-700" x-text="account.name"></h2>
+              <p class=" text-gray-500" x-text="account.category"></p>
             </div>
-        </template>
-
-        <!-- No Accounts Message -->
-        <template x-if="accounts.length === 0">
-            <div class="text-center py-12 text-gray-500">
-                <p>No accounts yet. Add your first account to get started!</p>
+            <div class="text-right">
+              <p class="text-xl font-bold" :class="account.current_balance <= 0 ? 'text-red-600' : 'text-gray-900'" x-text="`$${account.current_balance.toFixed(2)}`"></p>
+              <button @click="openDeleteModal(account.id)" class="mt-2 text-red-500 hover:text-red-700" title="Delete Account">
+                <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="25" height="25" viewBox="0 0 24 24">
+                  <path d="M 10.806641 2 C 10.289641 2 9.7956875 2.2043125 9.4296875 2.5703125 L 9 3 L 4 3 A 1.0001 1.0001 0 1 0 4 5 L 20 5 A 1.0001 1.0001 0 1 0 20 3 L 15 3 L 14.570312 2.5703125 C 14.205312 2.2043125 13.710359 2 13.193359 2 L 10.806641 2 z M 4.3652344 7 L 5.8925781 20.263672 C 6.0245781 21.253672 6.877 22 7.875 22 L 16.123047 22 C 17.121047 22 17.974422 21.254859 18.107422 20.255859 L 19.634766 7 L 4.3652344 7 z"></path>
+                </svg>
+              </button>
             </div>
+          </div>
         </template>
+      </div>
+    </template>
+
+    <!-- No Accounts Message -->
+    <template x-if="accounts.length === 0">
+      <div class="text-center py-12 text-gray-500">
+        <p>No accounts yet. Add your first account to get started!</p>
+      </div>
+    </template>
 
 
 
-    </div>
-    <!-- Add Account Modal -->
-    <div x-cloak x-show="showAddModal" class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center bg-black/50">
-        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-            <h2 class="text-xl font-semibold mb-4">Add Account</h2>
-            <form @submit.prevent="addAccount">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-1">Account Name</label>
-                    <input type="text" x-model="form.name" class="w-full border rounded px-3 py-2">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-1">Category</label>
-                    <select x-model="form.category" class="w-full border rounded px-3 py-2">
-                        <option value="">Select category</option>
-                        <option value="checking">Checking</option>
-                        <option value="savings">Savings</option>
-                        <option value="investment">Investment</option>
-                        <option value="credit">Credit</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-1">Initial Balance</label>
-                    <input type="number" x-model="form.balance" step="0.01" class="w-full border rounded px-3 py-2">
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" @click="closeAddModal" class="px-4 py-2 border rounded">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
-                </div>
-            </form>
+  </div>
+  <!-- Add Account Modal -->
+  <div x-cloak x-show="showAddModal" class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+      <h2 class="text-xl font-semibold mb-4">Add Account</h2>
+      <form @submit.prevent="addAccount">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Account Name</label>
+          <input type="text" x-model="form.name" class="w-full border rounded px-3 py-2">
         </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Category</label>
+          <select x-model="form.category" class="w-full border rounded px-3 py-2">
+            <option value="">Select category</option>
+            <option value="checking">Checking</option>
+            <option value="savings">Savings</option>
+            <option value="investment">Investment</option>
+            <option value="credit">Credit</option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Initial Balance</label>
+          <input type="number" x-model="form.balance" step="0.01" class="w-full border rounded px-3 py-2">
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" @click="closeAddModal" class="px-4 py-2 hover:bg-gray-100 border rounded-lg">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-blue-400 hover:bg-blue-600 text-white rounded-lg">Save</button>
+        </div>
+      </form>
     </div>
-    <!-- Notifications -->
+  </div>
+  <!-- Delete account modal -->
+  <div x-cloak x-show="showDeleteModal" class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+      <h2 class="text-xl font-semibold mb-4">Delete Account</h2>
+      <p class="mb-4">Are you sure you want to delete this account? This action cannot be undone.</p>
+      <div>
+        <button @click="closeDeleteModal" class="px-4 py-2 border  hover:bg-gray-100 rounded-lg mr-2">Cancel</button>
+        <button @click="deleteAccount" class="px-4 py-2 bg-red-400 hover:bg-red-600 text-white rounded-lg">Delete</button>
+      </div>
+    </div>
+  </div>
+  <!-- Notifications -->
   <div x-data="{
         notifications: [],
         displayDuration: 8000,

@@ -68,3 +68,22 @@ def w_add_account(name, category, initial_balance):
             return False
     else:
         return False
+    
+
+def w_delete_account(account_id):
+        params = (account_id,)
+        if account_id:
+            try:
+                cur.execute(
+                    "DELETE FROM accounts WHERE id = ?",
+                    params)
+                cur.execute(
+                    "DELETE FROM transactions WHERE account_id = ?",
+                    params)
+                con.commit()
+                return True
+            except Exception as e:
+                print(e)
+                return False
+        else:
+            return False
