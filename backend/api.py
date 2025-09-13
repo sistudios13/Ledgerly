@@ -15,8 +15,17 @@ class LedgerlyApi:
     def add_transaction(self, account_id, transaction_type, amount, category, date):
         return dbm.w_add_transaction(account_id, transaction_type, amount, category, date)
 
+    def add_long_transaction(self, account_id, transaction_type, amount, category, note, date):
+        return dbm.w_add_long_transaction(account_id, transaction_type, amount, category, note, date)
+
     def add_account(self, name, category, initial_balance):
         return dbm.w_add_account(name, category, initial_balance)
 
     def delete_account(self, a_id):
         return dbm.w_delete_account(a_id)
+
+    def delete_transaction(self, transaction_id):
+        return dbm.w_delete_transaction(transaction_id)
+
+    def edit_account(self, account_id, name, category):
+        return dbm.w_edit_account(account_id, name, category)
