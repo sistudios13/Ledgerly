@@ -226,6 +226,9 @@
       <h2 class="text-2xl font-semibold mb-4">Recent Transactions</h2>
       <div>
         <!-- filter by account: -->
+         <span>
+          Filters
+         </span>
         <select class="border rounded px-3 py-2 mb-4" x-model="selectedAccount" @input="currentPage = 1">
           <option value="0">All Accounts</option>
             <template x-for="account in accounts" :key="account.id">

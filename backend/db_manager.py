@@ -1,4 +1,6 @@
 import sqlite3
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import config as cfg
 
 
@@ -11,33 +13,146 @@ cur = con.cursor()
 def r_get_accounts():
     info = []
     rows = cur.execute("SELECT * FROM accounts").fetchall()
+    today = datetime.today()
+
     for row in rows:
         account_id = row[0]
         params = (account_id,)
-        # Calculating Balance
         transactions = cur.execute("SELECT * FROM transactions WHERE account_id = ?", params).fetchall()
+
         income, expenses = 0, 0
         new_bal = row[4]
 
-        if len(transactions) > 0:
-            for transaction in transactions:
-                if transaction[2] == "income":
-                    income += float(transaction[3])
-                if transaction[2] == "expense":
-                    expenses += float(transaction[3])
-            new_bal = row[3] + income - expenses
-        #     Returning rows
-        row_dict = {"id" : account_id, "name": row[1], "category" : row[2], "current_balance" : new_bal}
-        info.append(row_dict)
-    return info
+        for transaction in transactions:
+            tx_type = transaction[2]
+            amount = float(transaction[3])
+            is_recurring = transaction[7]
+            recurrence_rule = transaction[8]
+            start_date_str = transaction[9]
+            end_date_str = transaction[10]
 
+            if start_date_str:
+                start_date = datetime.strptime(start_date_str, "%m/%d/%Y")
+            effective_end = today
+            if end_date_str:
+                end_date = datetime.strptime(end_date_str, "%m/%d/%Y")
+                effective_end = min(today, end_date)
+
+
+            occurrences = 1
+
+            if is_recurring:
+                if recurrence_rule == "daily":
+                    occurrences = (effective_end - start_date).days + 1
+                elif recurrence_rule == "weekly":
+                    occurrences = ((effective_end - start_date).days // 7) + 1
+                elif recurrence_rule == "biweekly":
+                    occurrences = ((effective_end - start_date).days // 14) + 1
+                elif recurrence_rule == "monthly":
+                    delta = relativedelta(effective_end, start_date)
+                    occurrences = delta.years * 12 + delta.months + 1
+                elif recurrence_rule == "yearly":
+                    delta = relativedelta(effective_end, start_date)
+                    occurrences = delta.years + 1
+                if start_date > today:
+                    occurrences = 0
+
+
+
+            total_amount = amount * occurrences
+
+            # Apply to balance
+            if tx_type == "income":
+                income += total_amount
+            elif tx_type == "expense":
+                expenses += total_amount
+
+        new_bal = row[3] + income - expenses
+
+        row_dict = {
+            "id": account_id,
+            "name": row[1],
+            "category": row[2],
+            "current_balance": new_bal
+        }
+        info.append(row_dict)
+
+    return info
 
 def r_get_transactions():
     info = []
-    rows = cur.execute("SELECT * FROM transactions ORDER BY date DESC LIMIT 49999 OFFSET 0")
+    rows = cur.execute("SELECT * FROM transactions ORDER BY date DESC LIMIT 49999 OFFSET 0").fetchall()
+    today = datetime.today().date()
+
     for row in rows:
-        row_dict = {"id" : row[0], "account_id": row[1], "type" : row[2], "amount" : row[3], "category" : row[4], "date" : row[6]}
+        transaction_id = row[0]
+        account_id = row[1]
+        t_type = row[2]
+        base_amount = float(row[3])
+        category = row[4]
+        note = row[5]
+        txn_date = row[6]
+
+        is_recurring = row[7]
+        recurrence_rule = row[8]  # daily, weekly, monthly
+        start_date = row[9]
+        end_date = row[10]
+
+        if start_date:
+            start_date = datetime.strptime(start_date, "%m/%d/%Y").date()
+        if end_date:
+            end_date = datetime.strptime(end_date, "%m/%d/%Y").date()
+
+        total_amount = base_amount  
+
+        if is_recurring == 1 and recurrence_rule:
+            effective_end = end_date if end_date else today
+
+            if effective_end > today:
+                effective_end = today
+
+            if effective_end < start_date:
+                occurrences = 0
+
+            if start_date > today:
+                occurrences = 0
+
+            else:
+                if recurrence_rule == "daily":
+                    occurrences = (effective_end - start_date).days + 1
+
+                elif recurrence_rule == "weekly":
+                    occurrences = ((effective_end - start_date).days // 7) + 1
+
+                elif recurrence_rule == "biweekly":
+                    occurrences = ((effective_end - start_date).days // 14) + 1
+
+                elif recurrence_rule == "monthly":
+                    delta = relativedelta(effective_end, start_date)
+                    occurrences = delta.years * 12 + delta.months + 1
+
+                elif recurrence_rule == "yearly":
+                    delta = relativedelta(effective_end, start_date)
+                    occurrences = delta.years + 1
+
+                else:
+                    occurrences = 1
+            total_amount = base_amount * occurrences
+
+        row_dict = {
+            "id": transaction_id,
+            "account_id": account_id,
+            "type": t_type,
+            "amount": total_amount,
+            "recurring_amount": base_amount,
+            "category": category,
+            "note": note,
+            "date": str(txn_date),
+            "is_recurring": bool(is_recurring),
+            "recurrence_rule": recurrence_rule,
+        }
         info.append(row_dict)
+
     return info
 
 def w_add_transaction(account_id, transaction_type, amount, category, date):
