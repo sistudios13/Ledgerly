@@ -15,8 +15,8 @@ class LedgerlyApi:
     def add_transaction(self, account_id, transaction_type, amount, category, date):
         return dbm.w_add_transaction(account_id, transaction_type, amount, category, date)
 
-    def add_long_transaction(self, account_id, transaction_type, amount, category, note, date):
-        return dbm.w_add_long_transaction(account_id, transaction_type, amount, category, note, date)
+    def add_long_transaction(self, account_id, transaction_type, amount, category, note, date, is_recurring, recurrence_rule, end_date):
+        return dbm.w_add_long_transaction(account_id, transaction_type, amount, category, note, date, is_recurring, recurrence_rule, end_date)
 
     def add_account(self, name, category, initial_balance):
         return dbm.w_add_account(name, category, initial_balance)

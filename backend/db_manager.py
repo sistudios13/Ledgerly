@@ -28,11 +28,9 @@ def r_get_accounts():
             amount = float(transaction[3])
             is_recurring = transaction[7]
             recurrence_rule = transaction[8]
-            start_date_str = transaction[9]
-            end_date_str = transaction[10]
-
-            if start_date_str:
-                start_date = datetime.strptime(start_date_str, "%m/%d/%Y")
+            date_str = transaction[6]
+            end_date_str = transaction[9]
+            date = datetime.strptime(date_str, "%m/%d/%Y")
             effective_end = today
             if end_date_str:
                 end_date = datetime.strptime(end_date_str, "%m/%d/%Y")
@@ -41,20 +39,23 @@ def r_get_accounts():
 
             occurrences = 1
 
+            if not is_recurring and date > today:
+                occurrences = 0
+
             if is_recurring:
                 if recurrence_rule == "daily":
-                    occurrences = (effective_end - start_date).days + 1
+                    occurrences = (effective_end - date).days + 1
                 elif recurrence_rule == "weekly":
-                    occurrences = ((effective_end - start_date).days // 7) + 1
+                    occurrences = ((effective_end - date).days // 7) + 1
                 elif recurrence_rule == "biweekly":
-                    occurrences = ((effective_end - start_date).days // 14) + 1
+                    occurrences = ((effective_end - date).days // 14) + 1
                 elif recurrence_rule == "monthly":
-                    delta = relativedelta(effective_end, start_date)
+                    delta = relativedelta(effective_end, date)
                     occurrences = delta.years * 12 + delta.months + 1
                 elif recurrence_rule == "yearly":
-                    delta = relativedelta(effective_end, start_date)
+                    delta = relativedelta(effective_end, date)
                     occurrences = delta.years + 1
-                if start_date > today:
+                if date > today:
                     occurrences = 0
 
 
@@ -93,17 +94,18 @@ def r_get_transactions():
         note = row[5]
         txn_date = row[6]
 
+        date = datetime.strptime(txn_date, "%m/%d/%Y").date()
+
         is_recurring = row[7]
         recurrence_rule = row[8]  # daily, weekly, monthly
-        start_date = row[9]
-        end_date = row[10]
+        end_date = row[9]
 
-        if start_date:
-            start_date = datetime.strptime(start_date, "%m/%d/%Y").date()
         if end_date:
             end_date = datetime.strptime(end_date, "%m/%d/%Y").date()
 
-        total_amount = base_amount  
+        total_amount = base_amount
+
+
 
         if is_recurring == 1 and recurrence_rule:
             effective_end = end_date if end_date else today
@@ -111,33 +113,34 @@ def r_get_transactions():
             if effective_end > today:
                 effective_end = today
 
-            if effective_end < start_date:
+            if effective_end < date:
                 occurrences = 0
 
-            if start_date > today:
+            if date > today:
                 occurrences = 0
 
             else:
                 if recurrence_rule == "daily":
-                    occurrences = (effective_end - start_date).days + 1
+                    occurrences = (effective_end - date).days + 1
 
                 elif recurrence_rule == "weekly":
-                    occurrences = ((effective_end - start_date).days // 7) + 1
+                    occurrences = ((effective_end - date).days // 7) + 1
 
                 elif recurrence_rule == "biweekly":
-                    occurrences = ((effective_end - start_date).days // 14) + 1
+                    occurrences = ((effective_end - date).days // 14) + 1
 
                 elif recurrence_rule == "monthly":
-                    delta = relativedelta(effective_end, start_date)
+                    delta = relativedelta(effective_end, date)
                     occurrences = delta.years * 12 + delta.months + 1
 
                 elif recurrence_rule == "yearly":
-                    delta = relativedelta(effective_end, start_date)
+                    delta = relativedelta(effective_end, date)
                     occurrences = delta.years + 1
 
                 else:
                     occurrences = 1
             total_amount = base_amount * occurrences
+
 
         row_dict = {
             "id": transaction_id,
@@ -150,6 +153,7 @@ def r_get_transactions():
             "date": str(txn_date),
             "is_recurring": bool(is_recurring),
             "recurrence_rule": recurrence_rule,
+            "end_date": row[9]
         }
         info.append(row_dict)
 
@@ -157,7 +161,7 @@ def r_get_transactions():
 
 def w_add_transaction(account_id, transaction_type, amount, category, date):
     params = (account_id, transaction_type, amount, category, date)
-    if float(amount) > 0:
+    if float(amount) > 0 and date is not None:
         try:
             cur.execute("INSERT INTO transactions (account_id, type, amount, category, date) VALUES (?, ?, ?, ?, ?)", params)
             con.commit()
@@ -166,11 +170,12 @@ def w_add_transaction(account_id, transaction_type, amount, category, date):
             print(e)
             return False
     else:
+        print("Error: Amount less than 0")
         return False
 
-def w_add_long_transaction(account_id, transaction_type, amount, category, note, date):
+def w_add_long_transaction(account_id, transaction_type, amount, category, note, date, is_recurring, recurrence_rule, end_date):
     params = (account_id, transaction_type, amount, category, note, date)
-    if float(amount) > 0:
+    if float(amount) > 0 and not is_recurring and date is not None:
         try:
             cur.execute("INSERT INTO transactions (account_id, type, amount, category, note, date) VALUES (?, ?, ?, ?, ?, ?)",
                         params)
@@ -179,7 +184,35 @@ def w_add_long_transaction(account_id, transaction_type, amount, category, note,
         except Exception as e:
             print(e)
             return False
+    if float(amount) > 0 and is_recurring and date is not None and recurrence_rule is not None:
+        params = (account_id, transaction_type, amount, category, note, date, is_recurring, recurrence_rule, end_date)
+        if date == "":
+            print("Error: No date")
+            return False
+        if recurrence_rule == "na":
+            print("Error: No recurrence rule")
+            return False
+
+        date = datetime.strptime(date, "%m/%d/%Y").date()
+        if end_date:
+            end_date = datetime.strptime(end_date, "%m/%d/%Y").date()
+            if end_date < date:
+                print("Error: End date before date")
+                return False
+        try:
+            cur.execute("INSERT INTO transactions (account_id, type, amount, category, note, date, is_recurring, recurrence_rule, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        params)
+            con.commit()
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+
+
+
     else:
+        print("Error: Invalid entry, check recurrence, amount, date or end date")
         return False
 
 def w_add_account(name, category, initial_balance):
@@ -196,6 +229,7 @@ def w_add_account(name, category, initial_balance):
             print(e)
             return False
     else:
+        print("Error: No name or category")
         return False
     
 
@@ -215,6 +249,7 @@ def w_delete_account(account_id):
                 print(e)
                 return False
         else:
+            print("Error: No account id given")
             return False
 
 def w_edit_account(account_id, name, category):
@@ -230,6 +265,7 @@ def w_edit_account(account_id, name, category):
             print(e)
             return False
     else:
+        print("Error: No name or category")
         return False
 
 def w_delete_transaction(transaction_id):
@@ -245,4 +281,5 @@ def w_delete_transaction(transaction_id):
             print(e)
             return False
     else:
+        print("Error: No transaction id given")
         return False

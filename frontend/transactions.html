@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Ledgerly</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
   <script src="https://unpkg.com/alpinejs" defer></script>
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -12,6 +13,7 @@
       display: none !important;
     }
   </style>
+
 </head>
 
 <body class="bg-gray-100 text-gray-900" x-data="transactionPage()" x-init="
@@ -20,6 +22,7 @@
   });
 ">
   <script>
+
     function transactionPage() {
       return {
         accounts: [],
@@ -27,30 +30,38 @@
         showAddModal: false,
         showDeleteModal: false,
         showViewModal: false,
-        addForm : { account_id : null, type: 'expense', amount : 0,  name: '', category: '', note : '', date : ''},
+        addForm: { account_id: null, type: 'expense', amount: 0, name: '', category: '', note: '', date: '', is_recurring: false, recurrence_rule: null, recurrence_end_date: '' },
         deleteForm: { id: null },
-        viewTransaction: { account_id : null, type: '', amount : 0,  name: '', category: '', note : '', date : ''},
-        openAddModal() { this.showAddModal = true },
-        closeAddModal() { this.showAddModal = false },
+        viewTransaction: { account_id: null, type: '', amount: 0, name: '', category: '', note: '', date: '' },
+        openAddModal() { 
+          this.showAddModal = true
+          document.body.style.overflow = 'hidden'
+        },
+        closeAddModal() { 
+          this.showAddModal = false
+          document.body.style.overflow = 'auto'
+        },
 
         openDeleteModal(transactionId) {
           this.showDeleteModal = true
           this.deleteForm.id = transactionId
           this.showViewModal = false
         },
-        closeDeleteModal() { 
-            this.showDeleteModal = false 
-            this.showViewModal = true
-            this.deleteForm.id = null
+        closeDeleteModal() {
+          this.showDeleteModal = false
+          this.showViewModal = true
+          this.deleteForm.id = null
         },
 
         openViewModal(transaction) {
           this.showViewModal = true
           this.viewTransaction = transaction
+          document.body.style.overflow = 'hidden'
         },
         closeViewModal() {
-             this.showViewModal = false 
-             this.viewTransaction = { account_id : null, type: '', amount : 0,  name: '', category: '', note : '', date : ''}
+          this.showViewModal = false
+          this.viewTransaction = { account_id: null, type: '', amount: 0, name: '', category: '', note: '', date: '' }
+          document.body.style.overflow = 'auto'
         },
 
         async addTransaction() {
@@ -60,7 +71,10 @@
             parseFloat(this.addForm.amount),
             this.addForm.category,
             this.addForm.note,
-            this.formatDate(this.addForm.date)
+            this.formatDate(this.addForm.date),
+            this.addForm.is_recurring,
+            this.addForm.recurrence_rule,
+            this.formatDate(this.addForm.recurrence_end_date)
           );
           if (success) {
             window.dispatchEvent(new CustomEvent('notify', {
@@ -68,7 +82,7 @@
             }))
             this.accounts = await window.pywebview.api.get_accounts()
             await this.loadTransactions()
-            this.addForm = {account_id : null, type: 'expense', amount : 0,  name: '', category: '', note : '', date : ''}
+            this.addForm = { account_id: null, type: 'expense', amount: 0, name: '', category: '', note: '', date: '', is_recurring: false, recurrence_rule: null, recurrence_end_date: '' }
             this.closeAddModal()
             await this.loadAccounts()
             await this.loadTransactions()
@@ -76,7 +90,7 @@
             window.dispatchEvent(new CustomEvent('notify', {
               detail: { variant: 'danger', title: 'Error', message: 'Failed to create transaction.' }
             }))
-            this.addForm = {account_id : null, type: 'expense', amount : 0,  name: '', category: '', note : '', date : ''}
+            this.addForm = { account_id: null, type: 'expense', amount: 0, name: '', category: '', note: '', date: '', is_recurring: false, recurrence_rule: null, recurrence_end_date: '' }
             this.closeAddModal()
             await this.loadAccounts()
             await this.loadTransactions()
@@ -106,8 +120,8 @@
         },
 
         async init() {
-        await this.loadAccounts()
-        await this.loadTransactions()
+          await this.loadAccounts()
+          await this.loadTransactions()
         },
 
         async loadAccounts() {
@@ -126,49 +140,67 @@
         selectedAccount: 0,
 
         get filteredTransactions() {
-            // if selectedAccount is 0 or "", skip filtering
-            return (this.selectedAccount == 0 || this.selectedAccount === '')
-                ? this.transactions
-                : this.transactions.filter(item => item.account_id == this.selectedAccount);
+          // if selectedAccount is 0 or "", skip filtering
+          return (this.selectedAccount == 0 || this.selectedAccount === '')
+            ? this.transactions
+            : this.transactions.filter(item => item.account_id == this.selectedAccount);
         },
 
         get items() {
-            const start = (this.currentPage - 1) * this.itemsPerPage;
-            const end = start + this.itemsPerPage;
+          const start = (this.currentPage - 1) * this.itemsPerPage;
+          const end = start + this.itemsPerPage;
 
-            const filtered = this.filteredTransactions;
+          const filtered = this.filteredTransactions;
 
-            return filtered.slice(start, end);
+          return filtered.slice(start, end);
         },
 
 
-        
+
 
         get totalPages() {
           return Math.ceil(this.filteredTransactions.length / this.itemsPerPage);
         },
 
-        
+
 
         previousPage() {
           if (this.currentPage > 1) {
             this.currentPage--;
           }
         },
-        
+
         nextPage() {
           if (this.currentPage !== this.totalPages) {
             this.currentPage++;
           }
         },
-        
+
         formatCurrency(amount) {
           return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'CAD' }).format(amount);
         },
 
         formatDate(dateStr) {
-          const d = new Date(dateStr);
-          return d.toLocaleDateString();
+          if (!dateStr) return "";
+
+          // Handle YYYY-MM-DD (from <input type="date">)
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [y, m, d] = dateStr.split("-");
+            return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`;
+          }
+
+          // Handle M/D/YYYY already
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+            return dateStr;
+          }
+
+          // Fallback: try Date parsing (last resort)
+          const dObj = new Date(dateStr);
+          if (!isNaN(dObj)) {
+            return `${dObj.getMonth() + 1}/${dObj.getDate()}/${dObj.getFullYear()}`;
+          }
+
+          return dateStr;
         },
 
         getAccountName(account_id) {
@@ -188,7 +220,7 @@
       </div>
       <div class="flex  items-center font-medium justify-center gap-4">
         <a href="index.html">Dashboard</a>
-        <a href="accounts.html" >Accounts</a>
+        <a href="accounts.html">Accounts</a>
         <a href="transactions.html" class="underline underline-offset-2">Transactions</a>
       </div>
       <button @click="openAddModal" class="px-4 py-2 w-[161px] bg-blue-400 text-white rounded-lg hover:bg-blue-600">
@@ -226,14 +258,14 @@
       <h2 class="text-2xl font-semibold mb-4">Recent Transactions</h2>
       <div>
         <!-- filter by account: -->
-         <span>
+        <span>
           Filters
-         </span>
+        </span>
         <select class="border rounded px-3 py-2 mb-4" x-model="selectedAccount" @input="currentPage = 1">
           <option value="0">All Accounts</option>
-            <template x-for="account in accounts" :key="account.id">
-                <option :value="account.id" x-text="account.name"></option>
-            </template>
+          <template x-for="account in accounts" :key="account.id">
+            <option :value="account.id" x-text="account.name"></option>
+          </template>
         </select>
 
 
@@ -251,7 +283,7 @@
         </thead>
         <tbody>
           <template x-for="tx in items" :key="tx.id">
-            <tr class="border-t">
+            <tr class="border-t" x-bind:class="(new Date(tx.date) > new Date()) ? 'bg-blue-200' : ''">
               <td class="px-4 py-2" x-text="formatDate(tx.date)"></td>
               <td class="px-4 py-2 break-all" x-text="getAccountName(tx.account_id)"></td>
               <td class="px-4 py-2" x-text="tx.type"></td>
@@ -259,11 +291,19 @@
               <td class="px-4 py-2 font-medium break-all" x-text="formatCurrency(tx.amount)"></td>
               <td class="px-4 py-2 ">
                 <div class="flex h-full items-center justify-center">
-                    <button @click="openViewModal(tx)" class="text-gray-500 hover:text-gray-700" title="Edit Transaction">
-                        <svg fill="#000000" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <circle cx="12" cy="17.5" r="1.5"></circle> <circle cx="12" cy="12" r="1.5"></circle> <circle cx="12" cy="6.5" r="1.5"></circle> </g></svg>
-                    </button>
+                  <button @click="openViewModal(tx)" class="text-gray-500 hover:text-gray-700" title="Edit Transaction">
+                    <svg fill="#000000" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                      <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                      <g id="SVGRepo_iconCarrier">
+                        <circle cx="12" cy="17.5" r="1.5"></circle>
+                        <circle cx="12" cy="12" r="1.5"></circle>
+                        <circle cx="12" cy="6.5" r="1.5"></circle>
+                      </g>
+                    </svg>
+                  </button>
                 </div>
-            </td>
+              </td>
             </tr>
           </template>
         </tbody>
@@ -284,7 +324,7 @@
             </li>
             <li>
               <button class="flex items-center rounded-md p-1 text-neutral-600 " aria-label="previous page" disabled x-text="currentPage">
-                
+
               </button>
             </li>
             <li>
@@ -316,50 +356,109 @@
     </div>
   </div>
   <!-- Add Transaction Modal -->
-  <div x-cloak x-show="showAddModal" class="fixed h-screen top-0 left-0 inset-0 p-8 flex items-center justify-center  bg-black/50">
+  <div x-cloak x-show="showAddModal" @keydown.escape.window="closeAddModal" class="fixed h-screen top-0 left-0 inset-0 p-8 flex items-center justify-center  bg-black/50">
     <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto ">
       <h2 class="text-xl font-semibold mb-4">Add Transaction</h2>
       <template x-if="accounts.length > 0">
-        <form @submit.prevent="addTransaction()" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="flex flex-col gap-1">
-            <label class=" text-sm font-medium ml-1">Account</label>
-            <select x-model="addForm.account_id" class="border w-full rounded px-3 py-2">
-              <template x-for="account in accounts" :key="account.id">
-                <option :value="account.id" x-text="account.name"></option>
-              </template>
-            </select>
-          </div>
+        <form @submit.prevent="addTransaction()" class="space-y-6">
+          <!-- Basic Info -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
+            <h3 class="md:col-span-3 text-sm font-semibold text-gray-700 mb-2">Transaction Details</h3>
 
-          
-              <div class="flex flex-col gap-1 ">
-                <label class=" text-sm font-medium ml-1">Date</label>
-                <input type="date" required x-model="addForm.date" placeholder="Amount" class="border rounded px-3 py-2">
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium ml-1">Account</label>
+              <select x-model="addForm.account_id" class="border w-full rounded px-3 py-2">
+                <template x-for="account in accounts" :key="account.id">
+                  <option :value="account.id" x-text="account.name"></option>
+                </template>
+              </select>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium ml-1">Date</label>
+              <input id="datePicker" type="date" max="" required x-model="addForm.date" class="border rounded px-3 py-2">
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium ml-1">Amount</label>
+              <input type="number" required x-model="addForm.amount" placeholder="Amount" class="border rounded px-3 py-2">
+            </div>
+          </div>
+          <!-- Categorization -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+            <h3 class="md:col-span-2 text-sm font-semibold text-gray-700 mb-2">Categorization</h3>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium ml-1">Type</label>
+              <select x-model="addForm.type" class="border rounded px-3 py-2">
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+              </select>
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium ml-1">Category</label>
+              <input type="text" maxlength="20" x-model="addForm.category" placeholder="groceries, subscription, etc." class="border rounded px-3 py-2">
+            </div>
+
+            <div class="flex flex-col gap-1 md:col-span-2">
+              <label class="text-sm font-medium ml-1">Note</label>
+              <input type="text" maxlength="200" x-model="addForm.note" placeholder="Note here..." class="border rounded px-3 py-2">
+            </div>
+          </div>
+          <!-- Recurring Transaction -->
+          <div class="p-4 border rounded-lg space-y-4">
+            <label for="checkboxDefault" class="flex items-center justify-between cursor-pointer">
+              <span class="text-sm font-medium">Recurring Transaction</span>
+              <input id="checkboxDefault" type="checkbox" x-model="addForm.is_recurring" class="size-4 border rounded">
+            </label>
+
+            <div x-show="addForm.is_recurring" class="grid grid-cols-1 md:grid-cols-2 gap-4"
+              x-transition:enter="transition-all ease-in-out duration-300"
+              x-transition:enter-start="max-h-0 opacity-0"
+              x-transition:enter-end="max-h-[1000px] opacity-100"
+              x-transition:leave="transition-all ease-in-out duration-300"
+              x-transition:leave-start="max-h-[1000px] opacity-100"
+              x-transition:leave-end="max-h-0 opacity-0"
+            >
+              <div class="flex flex-col gap-1">
+                <label class="text-sm font-medium ml-1">Recurrence Rule</label>
+                <select x-model="addForm.recurrence_rule" class="border rounded px-3 py-2">
+                  <option :value="'na'">Select Recurrence</option>
+                  <option :value="'daily'">Daily</option>
+                  <option :value="'weekly'">Weekly</option>
+                  <option :value="'biweekly'">Bi-Weekly</option>
+                  <option :value="'monthly'">Monthly</option>
+                  <option :value="'yearly'">Yearly</option>
+                </select>
               </div>
               <div class="flex flex-col gap-1">
-                <label class=" text-sm font-medium ml-1">Amount</label>
-                <input type="number" required x-model="addForm.amount" placeholder="Amount" class="border rounded px-3 py-2">
+                <label class="text-sm font-medium ml-1">End Date (Blank for Ongoing)</label>
+                <input type="date" id="endPicker" min="" x-model="addForm.recurrence_end_date" class="border rounded px-3 py-2">
               </div>
-          
-          <div class="flex flex-col gap-1">
-            <label class=" text-sm font-medium ml-1">Type</label>
-            <select x-model="addForm.type" class="border rounded px-3 py-2">
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-          </div>
-          <div class="flex flex-col gap-1 md:col-span-2">
-            <label class=" text-sm font-medium ml-1">Category</label>
-            <input type="text" maxlength="20" x-model="addForm.category" placeholder="groceries, subscription, etc." class="border rounded px-3 py-2 ">
-          </div>
-          <div class="flex flex-col gap-1 md:col-span-2">
-            <label class=" text-sm font-medium ml-1">Note</label>
-            <input type="text" maxlength="200" x-model="addForm.note" placeholder="Note here..." class="border rounded px-3 py-2 ">
+            </div>
           </div>
 
           <div class="flex justify-end gap-2">
-            <button @click="closeAddModal" class="px-4 py-2 hover:bg-gray-100 border rounded-lg">Cancel</button>
+            <button @click="closeAddModal" type="button" class="px-4 py-2 hover:bg-gray-100 border rounded-lg">Cancel</button>
             <button type="submit" class="px-4 py-2 bg-blue-400 hover:bg-blue-600 text-white rounded-lg">Save</button>
-            </div>
+          </div>
+          <!-- <script>
+
+            const datePicker = document.getElementById('datePicker');
+            const startPicker = document.getElementById('startPicker');
+            const endPicker = document.getElementById('endPicker');
+            if (datePicker) {
+              const today = new Date();
+              const y = today.getFullYear();
+              const m = String(today.getMonth() + 1).padStart(2, '0');
+              const d = String(today.getDate()).padStart(2, '0');
+              const maxDate = `${y}-${m}-${d}`;
+              datePicker.setAttribute('max', maxDate);
+              startPicker.setAttribute('max', maxDate);
+              endPicker.setAttribute('min', maxDate);
+            };
+        </script> -->
         </form>
       </template>
       <template x-if="accounts.length === 0">
@@ -370,41 +469,93 @@
     </div>
   </div>
   <!-- View Transaction Modal -->
-  <div x-cloak x-show="showViewModal" class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center p-8 bg-black/50">
-    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-      <h2 class="text-xl font-semibold mb-4">Transaction Details</h2>
-        <div class="space-y-4">
-            <div>
-            <h3 class="font-bold text-gray-700">Account</h3>
-            <p class="text-gray-900 break-all" x-text="getAccountName(viewTransaction.account_id) || 'N/A'"></p>
+  <div 
+    x-cloak 
+    x-show="showViewModal"
+    @keydown.escape.window="closeViewModal"
+    class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center p-4 bg-black/50"
+  >
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <!-- Header -->
+      <h2 class="text-2xl font-semibold mb-4">Transaction Details</h2>
+
+      <!-- Future Warning -->
+      <template x-if="new Date(viewTransaction.date) > new Date()">
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-3 mb-4 rounded">
+          ⚠️ This transaction is scheduled for a future date.
+        </div>
+      </template>
+
+      <!-- Details Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h3 class="font-bold text-gray-700">Account</h3>
+          <p class="text-gray-900 break-words" x-text="getAccountName(viewTransaction.account_id) || 'N/A'"></p>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-700">Type</h3>
+          <p class="text-gray-900" x-text="viewTransaction.type"></p>
+        </div>
+
+        <div>
+          <h3 class="font-bold text-gray-700">Amount</h3>
+          <p class="text-gray-900" 
+            x-text="viewTransaction.is_recurring ? formatCurrency(viewTransaction.recurring_amount) + ' (per occurrence)' : formatCurrency(viewTransaction.amount)">
+          </p>
+        </div>
+        <template x-if="viewTransaction.is_recurring">
+          <div>
+            <h3 class="font-bold text-gray-700">Total Paid So Far</h3>
+            <p class="text-gray-900" 
+              x-text="viewTransaction.is_recurring ? formatCurrency(viewTransaction.amount) : 'N/A'">
+            </p>
+          </div>
+        </template>
+
+        <div>
+          <h3 class="font-bold text-gray-700">Category</h3>
+          <p class="text-gray-900 break-words" x-text="viewTransaction.category || 'N/A'"></p>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-700">Note</h3>
+          <p class="text-gray-900 break-words" x-text="viewTransaction.note || 'N/A'"></p>
+        </div>
+
+        <div>
+          <h3 class="font-bold text-gray-700">Date</h3>
+          <p class="text-gray-900" x-text="formatDate(viewTransaction.date)"></p>
+        </div>
+
+        <!-- Recurring Details -->
+        <template x-if="viewTransaction.is_recurring">
+          <div class="col-span-1 md:col-span-2 bg-gray-50 rounded-lg p-4">
+            <h3 class="font-bold text-gray-800 mb-2">Recurring Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <h4 class="font-semibold text-gray-700">Rule</h4>
+                <p class="text-gray-900" x-text="viewTransaction.recurrence_rule || 'N/A'"></p>
+              </div>
+              <div>
+                <h4 class="font-semibold text-gray-700">Start Date</h4>
+                <p class="text-gray-900" x-text="formatDate(viewTransaction.date)"></p>
+              </div>
+              <div>
+                <h4 class="font-semibold text-gray-700">End Date</h4>
+                <p class="text-gray-900" x-text="viewTransaction.end_date ? formatDate(viewTransaction.end_date) : 'Ongoing'"></p>
+              </div>
             </div>
-            <div>
-            <h3 class="font-bold text-gray-700">Type</h3>
-            <p class="text-gray-900" x-text="viewTransaction.type"></p>
-            </div>
-            <div>
-            <h3 class="font-bold text-gray-700">Amount</h3>
-            <p class="text-gray-900 break-all" x-text="formatCurrency(viewTransaction.amount)"></p>
-            </div>
-            <div>
-            <h3 class="font-bold text-gray-700">Category</h3>
-            <p class="text-gray-900 break-all" x-text="viewTransaction.category || 'N/A'"></p>
-            </div>
-            <div>
-            <h3 class="font-bold text-gray-700">Note</h3>
-            <p class="text-gray-900 break-all" x-text="viewTransaction.note || 'N/A'"></p>
-            </div>
-            <div>
-            <h3 class="font-bold text-gray-700">Date</h3>
-            <p class="text-gray-900" x-text="formatDate(viewTransaction.date)"></p>
-            </div>
-            <div class="flex justify-start gap-2">
-                <button @click="closeViewModal" class="px-4 py-2 hover:bg-gray-100 border rounded-lg">Close</button>
-                <button @click="openDeleteModal(viewTransaction.id)" class="px-4 py-2 bg-red-400 hover:bg-red-600 text-white rounded-lg">Delete Transaction</button>
-            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-2 mt-6">
+        <button @click="closeViewModal" class="px-4 py-2 hover:bg-gray-100 border rounded-lg">Close</button>
+        <button @click="openDeleteModal(viewTransaction.id)" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete Transaction</button>
+      </div>
     </div>
   </div>
-  </div>
+
   <!-- Notifications -->
   <div x-data="{
         notifications: [],
