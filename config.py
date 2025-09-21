@@ -28,9 +28,9 @@ WINDOW_FRONTEND = 'frontend/index.html'
 WINDOW_MIN_WIDTH = 740
 WINDOW_MIN_HEIGHT = 200
 
-# Logging
+# Logging (future use)
 LOGGING_ENABLED = True
 LOG_FILE = "ledgerly.log"
 
-# Recurring Transactions Defaults
+# Recurring Transactions Defaults (future use)
 DEFAULT_RECUR_FREQUENCY = "monthly"
