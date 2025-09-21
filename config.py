@@ -3,10 +3,10 @@
 # ===============================
 
 # Dev
-DEV_MODE = True
+DEV_MODE = False
 
 # Database
-DB_PATH = "db/ledgerly.db"
+DB_PATH = "db/your_ledgerly.db"
 
 # Default Currency
 DEFAULT_CURRENCY = "CAD"
