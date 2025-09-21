@@ -15,7 +15,7 @@ Ledgerly is a simple personal finance tracker built with Python and PyWebView. I
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/yourusername/ledgerly.git
+git clone https://github.com/sistudios13/ledgerly.git
 cd ledgerly
 ```
 
