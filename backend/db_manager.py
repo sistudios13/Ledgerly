@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 import config as cfg
 
@@ -283,3 +283,79 @@ def w_delete_transaction(transaction_id):
     else:
         print("Error: No transaction id given")
         return False
+
+
+
+def r_get_balance_over_time(account_id):
+    today = date.today()
+    daily_balances = {}
+
+    # Build query
+    sql = "SELECT * FROM transactions"
+    params = ()
+    if account_id:
+        sql += " WHERE account_id = ?"
+        params = (account_id,)
+    sql += " ORDER BY date ASC"
+    rows = cur.execute(sql, params).fetchall()
+
+
+    def expand_recurring(row):
+        txs = []
+        (
+            id, acc_id, t_type, amount, category, note, tx_date,
+            is_recurring, recurrence_rule, end_date
+        ) = row
+
+        base_date = datetime.strptime(tx_date, "%m/%d/%Y").date()
+        effective_end = datetime.strptime(end_date, "%m/%d/%Y").date() if end_date else today
+        effective_end = min(effective_end, today)
+
+        # Non-recurring
+        if not is_recurring or recurrence_rule is None:
+            txs.append((base_date, t_type, amount))
+            return txs
+
+        # Recurring
+        current = base_date
+        while current <= effective_end:
+            txs.append((current, t_type, amount))
+            if recurrence_rule == "daily":
+                current += timedelta(days=1)
+            elif recurrence_rule == "weekly":
+                current += timedelta(weeks=1)
+            elif recurrence_rule == "biweekly":
+                current += timedelta(weeks=2)
+            elif recurrence_rule == "monthly":
+                current += relativedelta(months=1)
+            elif recurrence_rule == "yearly":
+                current += relativedelta(years=1)
+            else:
+                break
+        return txs
+
+    # Expand all transactions
+    expanded = []
+    for row in rows:
+        expanded.extend(expand_recurring(row))
+
+    # Sort by date
+    expanded.sort(key=lambda x: x[0])
+
+    # Starting balance
+    balance = cur.execute("SELECT starting_balance FROM accounts WHERE id = ?", (account_id,)).fetchone()[0]
+
+
+    for d, t_type, amount in expanded:
+        if t_type == "income":
+            balance += amount
+        elif t_type == "expense":
+            balance -= amount
+
+        # Update the balance for this day (overwrite previous if multiple)
+        daily_balances[d] = balance
+
+    # Convert to sorted list of dicts
+    info = [{"date": d.strftime("%m-%d-%Y"), "value": v} for d, v in sorted(daily_balances.items())]
+
+    return info

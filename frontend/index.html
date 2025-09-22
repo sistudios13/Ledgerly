@@ -66,6 +66,7 @@
           this.transactionForm.category = '';
           await this.loadAccounts();
           await this.loadTransactions();
+          getData();
           if (success) {
 
             window.dispatchEvent(new CustomEvent('notify', {
@@ -90,6 +91,8 @@
         currentPage: 1,
         itemsPerPage: 10,
 
+        balance_chart_account: null,
+
         get totalPages() {
           return Math.ceil(this.transactions.length / this.itemsPerPage);
         },
@@ -105,7 +108,7 @@
             this.currentPage--;
           }
         },
-        
+
         nextPage() {
           if (this.currentPage !== this.totalPages) {
             this.currentPage++;
@@ -140,7 +143,7 @@
           };
         },
 
-        
+
       });
     });
 
@@ -172,20 +175,20 @@
     </header>
     <section class="mt-8 mb-8">
       <h2 class="text-2xl font-semibold mb-4">Overview</h2>
-      
+
       <div class="grid grid-cols-3 gap-4">
         <!-- Total Balance -->
         <div class="p-4 bg-white rounded-lg shadow border">
           <h3 class="text-sm font-medium text-gray-500">Total Balance</h3>
           <p class="text-xl font-bold text-gray-900" x-text="$store.ledgerly.formatCurrency($store.ledgerly.combinedStats.totalBalance)"></p>
         </div>
-        
+
         <!-- Total Income -->
         <div class="p-4 bg-white rounded-lg shadow border">
           <h3 class="text-sm font-medium text-gray-500">Total Income</h3>
           <p class="text-xl font-bold text-green-600" x-text="$store.ledgerly.formatCurrency($store.ledgerly.combinedStats.totalIncome)"></p>
         </div>
-        
+
         <!-- Total Expenses -->
         <div class="p-4 bg-white rounded-lg shadow border">
           <h3 class="text-sm font-medium text-gray-500">Total Expenses</h3>
@@ -196,7 +199,7 @@
     <!-- Accounts -->
     <section class="mb-8" x-data>
       <h2 class="text-2xl font-semibold mb-4">Accounts</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" :class="$store.ledgerly.accounts.length >= 3 ? 'lg:grid-cols-3' : ''">
         <template x-if="$store.ledgerly.accounts.length > 0">
           <template x-for="account in $store.ledgerly.accounts" :key="account.id">
             <div class="rounded-lg border p-4 bg-white shadow flex justify-between gap-2 items-center">
@@ -257,7 +260,107 @@
         </div>
       </template>
     </section>
+    <section class="mt-8 mb-8">
+      <h2 class="text-2xl font-semibold mb-4">Charts</h2>
+      <div x-show="$store.ledgerly.transactions.length > 0" class="bg-white rounded-md shadow p-4">
+        <div class="flex justify-between items-center" 
+        x-init="
+          $watch(' $store.ledgerly.accounts ', (accounts) => {
+            if (accounts.length > 0 && !$store.ledgerly.balance_chart_account) {
+              $store.ledgerly.balance_chart_account = accounts[0].id; getData()
+            }
+          }, { immediate: true });
+          getData();
+        ">
 
+          <h3 class="text-lg font-medium">Account Balance Over Time</h3>
+
+          <select x-model="$store.ledgerly.balance_chart_account" @change="getData" class="border rounded px-3 py-2">
+            <template x-for="account in $store.ledgerly.accounts" :key="account.id">
+              <option :value="account.id" x-text="account.name"></option>
+            </template>
+          </select>
+        </div>
+        <div class="w-full" id="chart"></div>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+      <script>
+        let rawData = [];
+
+        async function getData() {
+
+          const accountId = Alpine.store('ledgerly').balance_chart_account;
+          rawData = await window.pywebview.api.get_balance_over_time(accountId);
+          
+          rawData = rawData.map(item => ({
+            x: item.date,
+            y: Number(item.value)
+          }));
+
+          if (typeof chart !== "undefined") {
+            chart.updateSeries([{
+              name: "Account Balance",
+              data: rawData
+            }]);
+          }
+        }
+
+
+        window.getData = getData;
+
+      </script>
+      <script>
+        
+        
+          
+        options = {
+          series: [{
+            name: "Account Balance",
+            data: rawData,
+            parsing: {
+              x: 'date',
+              y: 'value'
+            }
+          }],
+          chart: {
+            type: 'area',
+            height: 350,
+            zoom: {
+              enabled: false
+            },
+            toolbar: {
+              tools: {
+                download: false
+              }
+            }
+          },
+          dataLabels: {
+            enabled: false
+          },
+          stroke: {
+            curve: 'smooth'
+          },
+
+          labels: [
+
+          ],
+          xaxis: {
+            type: 'datetime',
+          },
+          yaxis: {
+            opposite: true
+          },
+        };
+        var chart = new ApexCharts(document.querySelector("#chart"), options);
+        chart.render();
+      </script>
+
+      <template x-if="$store.ledgerly.transactions.length === 0">
+        <div class="text-red-500 font-medium">
+          You must add transactions to see charts.
+        </div>
+      </template>
+    </section>
     <!-- Transactions -->
     <section>
       <h2 class="text-2xl font-semibold mb-4">Recent Transactions</h2>
@@ -299,7 +402,7 @@
             </li>
             <li>
               <button class="flex items-center rounded-md p-1 text-neutral-600 " aria-label="previous page" disabled x-text="$store.ledgerly.currentPage">
-                
+
               </button>
             </li>
             <li>

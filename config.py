@@ -3,17 +3,17 @@
 # ===============================
 
 # Dev
-DEV_MODE = False
+DEV_MODE = True
 
 # Database
-DB_PATH = "db/your_ledgerly.db"
+DB_PATH = "db/ledgerly.db"
 
 # Default Currency
 DEFAULT_CURRENCY = "CAD"
 
 # App Settings
 APP_NAME = "Ledgerly"
-APP_VERSION = "0.1"
+APP_VERSION = "0.2"
 APP_THEME = "light"
 
 # Notifications

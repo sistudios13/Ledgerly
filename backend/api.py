@@ -29,3 +29,6 @@ class LedgerlyApi:
 
     def edit_account(self, account_id, name, category):
         return dbm.w_edit_account(account_id, name, category)
+
+    def get_balance_over_time(self, account_id):
+        return dbm.r_get_balance_over_time(account_id)
