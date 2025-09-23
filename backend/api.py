@@ -32,3 +32,6 @@ class LedgerlyApi:
 
     def get_balance_over_time(self, account_id):
         return dbm.r_get_balance_over_time(account_id)
+
+    def get_total_by_category(self, account_id, t_type):
+        return dbm.r_get_total_by_category(account_id, t_type)

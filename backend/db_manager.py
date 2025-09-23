@@ -5,12 +5,13 @@ import config as cfg
 
 
 dbfile = cfg.DB_PATH
-con = sqlite3.connect(dbfile, check_same_thread=False)
 
-cur = con.cursor()
 
 
 def r_get_accounts():
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
     info = []
     rows = cur.execute("SELECT * FROM accounts").fetchall()
     today = datetime.today()
@@ -81,6 +82,9 @@ def r_get_accounts():
     return info
 
 def r_get_transactions():
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
     info = []
     rows = cur.execute("SELECT * FROM transactions ORDER BY date DESC LIMIT 49999 OFFSET 0").fetchall()
     today = datetime.today().date()
@@ -160,6 +164,9 @@ def r_get_transactions():
     return info
 
 def w_add_transaction(account_id, transaction_type, amount, category, date):
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
     params = (account_id, transaction_type, amount, category, date)
     if float(amount) > 0 and date is not None:
         try:
@@ -174,6 +181,9 @@ def w_add_transaction(account_id, transaction_type, amount, category, date):
         return False
 
 def w_add_long_transaction(account_id, transaction_type, amount, category, note, date, is_recurring, recurrence_rule, end_date):
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
     params = (account_id, transaction_type, amount, category, note, date)
     if float(amount) > 0 and not is_recurring and date is not None:
         try:
@@ -216,6 +226,9 @@ def w_add_long_transaction(account_id, transaction_type, amount, category, note,
         return False
 
 def w_add_account(name, category, initial_balance):
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
     default_currency = cfg.DEFAULT_CURRENCY
     params = (name, category, initial_balance, initial_balance, default_currency)
     if len(name) > 0 and len(category) > 0:
@@ -234,25 +247,30 @@ def w_add_account(name, category, initial_balance):
     
 
 def w_delete_account(account_id):
-        params = (account_id,)
-        if account_id:
-            try:
-                cur.execute(
-                    "DELETE FROM accounts WHERE id = ?",
-                    params)
-                cur.execute(
-                    "DELETE FROM transactions WHERE account_id = ?",
-                    params)
-                con.commit()
-                return True
-            except Exception as e:
-                print(e)
-                return False
-        else:
-            print("Error: No account id given")
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
+    params = (account_id,)
+    if account_id:
+        try:
+            cur.execute(
+                "DELETE FROM accounts WHERE id = ?",
+                params)
+            cur.execute(
+                "DELETE FROM transactions WHERE account_id = ?",
+                params)
+            con.commit()
+            return True
+        except Exception as e:
+            print(e)
             return False
+    else:
+        print("Error: No account id given")
+        return False
 
 def w_edit_account(account_id, name, category):
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
     params = (name, category, account_id)
     if len(name) > 0 and len(category) > 0:
         try:
@@ -268,7 +286,45 @@ def w_edit_account(account_id, name, category):
         print("Error: No name or category")
         return False
 
+def expand_recurring(row):
+    today = date.today()
+    txs = []
+    (
+        id, acc_id, t_type, amount, category, note, tx_date,
+        is_recurring, recurrence_rule, end_date
+    ) = row
+
+    base_date = datetime.strptime(tx_date, "%m/%d/%Y").date()
+    effective_end = datetime.strptime(end_date, "%m/%d/%Y").date() if end_date else today
+    effective_end = min(effective_end, today)
+
+    # Non-recurring
+    if not is_recurring or recurrence_rule is None:
+        txs.append((base_date, t_type, amount))
+        return txs
+
+    # Recurring
+    current = base_date
+    while current <= effective_end:
+        txs.append((current, t_type, amount))
+        if recurrence_rule == "daily":
+            current += timedelta(days=1)
+        elif recurrence_rule == "weekly":
+            current += timedelta(weeks=1)
+        elif recurrence_rule == "biweekly":
+            current += timedelta(weeks=2)
+        elif recurrence_rule == "monthly":
+            current += relativedelta(months=1)
+        elif recurrence_rule == "yearly":
+            current += relativedelta(years=1)
+        else:
+            break
+    return txs
+
 def w_delete_transaction(transaction_id):
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
     params = (transaction_id,)
     if transaction_id:
         try:
@@ -287,6 +343,9 @@ def w_delete_transaction(transaction_id):
 
 
 def r_get_balance_over_time(account_id):
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
     today = date.today()
     daily_balances = {}
 
@@ -300,41 +359,6 @@ def r_get_balance_over_time(account_id):
     rows = cur.execute(sql, params).fetchall()
 
 
-    def expand_recurring(row):
-        txs = []
-        (
-            id, acc_id, t_type, amount, category, note, tx_date,
-            is_recurring, recurrence_rule, end_date
-        ) = row
-
-        base_date = datetime.strptime(tx_date, "%m/%d/%Y").date()
-        effective_end = datetime.strptime(end_date, "%m/%d/%Y").date() if end_date else today
-        effective_end = min(effective_end, today)
-
-        # Non-recurring
-        if not is_recurring or recurrence_rule is None:
-            txs.append((base_date, t_type, amount))
-            return txs
-
-        # Recurring
-        current = base_date
-        while current <= effective_end:
-            txs.append((current, t_type, amount))
-            if recurrence_rule == "daily":
-                current += timedelta(days=1)
-            elif recurrence_rule == "weekly":
-                current += timedelta(weeks=1)
-            elif recurrence_rule == "biweekly":
-                current += timedelta(weeks=2)
-            elif recurrence_rule == "monthly":
-                current += relativedelta(months=1)
-            elif recurrence_rule == "yearly":
-                current += relativedelta(years=1)
-            else:
-                break
-        return txs
-
-    # Expand all transactions
     expanded = []
     for row in rows:
         expanded.extend(expand_recurring(row))
@@ -352,10 +376,38 @@ def r_get_balance_over_time(account_id):
         elif t_type == "expense":
             balance -= amount
 
-        # Update the balance for this day (overwrite previous if multiple)
+
         daily_balances[d] = balance
 
     # Convert to sorted list of dicts
     info = [{"date": d.strftime("%m-%d-%Y"), "value": v} for d, v in sorted(daily_balances.items())]
 
+    return info
+
+
+def r_get_total_by_category(account_id, t_type):
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
+    params = (account_id, t_type)
+    rows = cur.execute("SELECT * FROM transactions WHERE account_id = ? AND type = ?", params).fetchall()
+
+    totals = {}
+
+
+    for row in rows:
+
+        amount = expand_recurring(row)[0][2]
+        category = row[4] if row[4] else "Other"
+
+        if category not in totals:
+            totals[category] = 0
+        totals[category] += amount
+
+    numbers = list(totals.values())
+    labels = list(totals.keys())
+
+    info = [numbers, labels]
+
+    print(info)
     return info

@@ -92,6 +92,7 @@
         itemsPerPage: 10,
 
         balance_chart_account: null,
+        category_chart_account: null,
 
         get totalPages() {
           return Math.ceil(this.transactions.length / this.itemsPerPage);
@@ -237,7 +238,7 @@
 
           <div class="flex flex-col gap-1">
             <label class=" text-sm font-medium ml-1">Amount</label>
-            <input type="number" required x-model="$store.ledgerly.transactionForm.amount" placeholder="Amount" class="border rounded px-3 py-2">
+            <input type="number" step="0.01" min="0" required x-model="$store.ledgerly.transactionForm.amount" placeholder="Amount" class="border rounded px-3 py-2">
           </div>
           <div class="flex flex-col gap-1">
             <label class=" text-sm font-medium ml-1">Type</label>
@@ -262,98 +263,49 @@
     </section>
     <section class="mt-8 mb-8">
       <h2 class="text-2xl font-semibold mb-4">Charts</h2>
-      <div x-show="$store.ledgerly.transactions.length > 0" class="bg-white rounded-md shadow p-4">
-        <div class="flex justify-between items-center" 
-        x-init="
-          $watch(' $store.ledgerly.accounts ', (accounts) => {
-            if (accounts.length > 0 && !$store.ledgerly.balance_chart_account) {
-              $store.ledgerly.balance_chart_account = accounts[0].id; getData()
-            }
-          }, { immediate: true });
-          getData();
-        ">
-
-          <h3 class="text-lg font-medium">Account Balance Over Time</h3>
-
-          <select x-model="$store.ledgerly.balance_chart_account" @change="getData" class="border rounded px-3 py-2">
-            <template x-for="account in $store.ledgerly.accounts" :key="account.id">
-              <option :value="account.id" x-text="account.name"></option>
-            </template>
-          </select>
+      <div x-show="$store.ledgerly.transactions.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 max-h-min">
+        <!-- chartt 1 -->
+        <div class="bg-white rounded-md shadow p-4">
+          <div class="flex justify-between items-center" x-init="
+            $watch(' $store.ledgerly.accounts ', (accounts) => {
+              if (accounts.length > 0 && !$store.ledgerly.balance_chart_account) {
+                $store.ledgerly.balance_chart_account = accounts[0].id; getData()
+              }
+            }, { immediate: true });
+            getData();
+          ">
+            <h3 class="text-lg font-medium">Account Balance Over Time</h3>
+            <select x-model="$store.ledgerly.balance_chart_account" @change="getData" class="border rounded px-3 py-2">
+              <template x-for="account in $store.ledgerly.accounts" :key="account.id">
+                <option :value="account.id" x-text="account.name"></option>
+              </template>
+            </select>
+          </div>
+          <div class="w-full" id="chart"></div>
         </div>
-        <div class="w-full" id="chart"></div>
+        <!-- chart 2 -->
+        <div class="bg-white rounded-md shadow h-full p-4 flex flex-col">
+          <div class="flex justify-between items-center" x-init="
+            $watch(' $store.ledgerly.accounts ', (accounts) => {
+              if (accounts.length > 0 && !$store.ledgerly.category_chart_account) {
+                $store.ledgerly.category_chart_account = accounts[0].id; getData2()
+              }
+            }, { immediate: true });
+            getData2();
+          ">
+            <h3 class="text-lg font-medium">Total Expenses by Category</h3>
+            <select x-model="$store.ledgerly.category_chart_account" @change="getData2" class="border rounded px-3 py-2">
+              <template x-for="account in $store.ledgerly.accounts" :key="account.id">
+                <option :value="account.id" x-text="account.name"></option>
+              </template>
+            </select>
+          </div>
+          <div class="w-full flex justify-center items-center h-full" id="chart2"></div>
+        </div>
       </div>
       <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-      <script>
-        let rawData = [];
-
-        async function getData() {
-
-          const accountId = Alpine.store('ledgerly').balance_chart_account;
-          rawData = await window.pywebview.api.get_balance_over_time(accountId);
-          
-          rawData = rawData.map(item => ({
-            x: item.date,
-            y: Number(item.value)
-          }));
-
-          if (typeof chart !== "undefined") {
-            chart.updateSeries([{
-              name: "Account Balance",
-              data: rawData
-            }]);
-          }
-        }
-
-
-        window.getData = getData;
-
-      </script>
-      <script>
-        
-        
-          
-        options = {
-          series: [{
-            name: "Account Balance",
-            data: rawData,
-            parsing: {
-              x: 'date',
-              y: 'value'
-            }
-          }],
-          chart: {
-            type: 'area',
-            height: 350,
-            zoom: {
-              enabled: false
-            },
-            toolbar: {
-              tools: {
-                download: false
-              }
-            }
-          },
-          dataLabels: {
-            enabled: false
-          },
-          stroke: {
-            curve: 'smooth'
-          },
-
-          labels: [
-
-          ],
-          xaxis: {
-            type: 'datetime',
-          },
-          yaxis: {
-            opposite: true
-          },
-        };
-        var chart = new ApexCharts(document.querySelector("#chart"), options);
-        chart.render();
-      </script>
+      <script src="assets/js/getDataScripts.js"></script>
+      <script src="assets/js/charts.js"></script>
 
       <template x-if="$store.ledgerly.transactions.length === 0">
         <div class="text-red-500 font-medium">
