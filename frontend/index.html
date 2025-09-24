@@ -266,7 +266,7 @@
       <div x-show="$store.ledgerly.transactions.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 max-h-min">
         <!-- chartt 1 -->
         <div class="bg-white rounded-md shadow p-4">
-          <div class="flex justify-between items-center" x-init="
+          <div class="flex justify-between items-center px-4 pt-2" x-init="
             $watch(' $store.ledgerly.accounts ', (accounts) => {
               if (accounts.length > 0 && !$store.ledgerly.balance_chart_account) {
                 $store.ledgerly.balance_chart_account = accounts[0].id; getData()
@@ -285,7 +285,7 @@
         </div>
         <!-- chart 2 -->
         <div class="bg-white rounded-md shadow h-full p-4 flex flex-col">
-          <div class="flex justify-between items-center" x-init="
+          <div class="flex justify-between items-center py-2 px-4" x-init="
             $watch(' $store.ledgerly.accounts ', (accounts) => {
               if (accounts.length > 0 && !$store.ledgerly.category_chart_account) {
                 $store.ledgerly.category_chart_account = accounts[0].id; getData2()

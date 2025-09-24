@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 import config as cfg
+import logging
 
 
 dbfile = cfg.DB_PATH
@@ -174,10 +175,10 @@ def w_add_transaction(account_id, transaction_type, amount, category, date):
             con.commit()
             return True
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return False
     else:
-        print("Error: Amount less than 0")
+        logging.warning("Error: Amount less than or equal to 0")
         return False
 
 def w_add_long_transaction(account_id, transaction_type, amount, category, note, date, is_recurring, recurrence_rule, end_date):
@@ -192,22 +193,22 @@ def w_add_long_transaction(account_id, transaction_type, amount, category, note,
             con.commit()
             return True
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return False
     if float(amount) > 0 and is_recurring and date is not None and recurrence_rule is not None:
         params = (account_id, transaction_type, amount, category, note, date, is_recurring, recurrence_rule, end_date)
         if date == "":
-            print("Error: No date")
+            logging.warning("Error: No date")
             return False
         if recurrence_rule == "na":
-            print("Error: No recurrence rule")
+            logging.warning("Error: No recurrence rule")
             return False
 
         date = datetime.strptime(date, "%m/%d/%Y").date()
         if end_date:
             end_date = datetime.strptime(end_date, "%m/%d/%Y").date()
             if end_date < date:
-                print("Error: End date before date")
+                logging.warning("Error: End date before date")
                 return False
         try:
             cur.execute("INSERT INTO transactions (account_id, type, amount, category, note, date, is_recurring, recurrence_rule, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -215,14 +216,14 @@ def w_add_long_transaction(account_id, transaction_type, amount, category, note,
             con.commit()
             return True
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return False
 
 
 
 
     else:
-        print("Error: Invalid entry, check recurrence, amount, date or end date")
+        logging.warning("Error: Invalid entry, check recurrence, amount, date or end date")
         return False
 
 def w_add_account(name, category, initial_balance):
@@ -239,10 +240,10 @@ def w_add_account(name, category, initial_balance):
             con.commit()
             return True
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return False
     else:
-        print("Error: No name or category")
+        logging.warning("Error: No name or category")
         return False
     
 
@@ -262,10 +263,10 @@ def w_delete_account(account_id):
             con.commit()
             return True
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return False
     else:
-        print("Error: No account id given")
+        logging.warning("Error: No account id given")
         return False
 
 def w_edit_account(account_id, name, category):
@@ -280,10 +281,10 @@ def w_edit_account(account_id, name, category):
             con.commit()
             return True
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return False
     else:
-        print("Error: No name or category")
+        logging.warning("Error: No name or category")
         return False
 
 def expand_recurring(row):
@@ -334,10 +335,10 @@ def w_delete_transaction(transaction_id):
             con.commit()
             return True
         except Exception as e:
-            print(e)
+            logging.warning(e)
             return False
     else:
-        print("Error: No transaction id given")
+        logging.warning("Error: No transaction id given")
         return False
 
 
@@ -409,5 +410,4 @@ def r_get_total_by_category(account_id, t_type):
 
     info = [numbers, labels]
 
-    print(info)
     return info

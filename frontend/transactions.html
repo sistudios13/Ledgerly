@@ -9,7 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
-    x-cloak {
+    [x-cloak] {
       display: none !important;
     }
   </style>
@@ -345,8 +345,8 @@
 
   </div>
   <!-- Delete transaction modal -->
-  <div x-cloak x-show="showDeleteModal" class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center p-8 bg-black/50">
-    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+  <div x-cloak x-show="showDeleteModal" class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center p-8 bg-black/50" x-transition:enter="transition duration-100 ease-out" x-transition:enter-start=" opacity-0" x-transition:enter-end=" opacity-100" x-transition:leave="transition duration-100 ease-in" x-transition:leave-start=" opacity-100" x-transition:leave-end=" opacity-0">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" x-transition:enter="transition duration-100 ease-out" x-transition:enter-start="scale-90 opacity-0" x-transition:enter-end="scale-100 opacity-100" x-transition:leave="transition duration-100 ease-in" x-transition:leave-start="scale-100 opacity-100" x-transition:leave-end="scale-90 opacity-0" x-cloak x-show="showDeleteModal">
       <h2 class="text-xl font-semibold mb-4">Delete Transaction</h2>
       <p class="mb-4">Are you sure you want to delete this transaction? This action cannot be undone.</p>
       <div>
@@ -356,8 +356,8 @@
     </div>
   </div>
   <!-- Add Transaction Modal -->
-  <div x-cloak x-show="showAddModal" @keydown.escape.window="closeAddModal" class="fixed h-screen top-0 left-0 inset-0 p-8 flex items-center justify-center  bg-black/50">
-    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto ">
+  <div x-cloak x-show="showAddModal" @keydown.escape.window="closeAddModal" class="fixed h-screen top-0 left-0 inset-0 p-8 flex items-center justify-center  bg-black/50" x-transition:enter="transition duration-100 ease-out" x-transition:enter-start=" opacity-0" x-transition:enter-end=" opacity-100" x-transition:leave="transition duration-100 ease-in" x-transition:leave-start=" opacity-100" x-transition:leave-end=" opacity-0">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto " x-transition:enter="transition duration-100 ease-out" x-transition:enter-start="scale-90 opacity-0" x-transition:enter-end="scale-100 opacity-100" x-transition:leave="transition duration-100 ease-in" x-transition:leave-start="scale-100 opacity-100" x-transition:leave-end="scale-90 opacity-0" x-cloak x-show="showAddModal">
       <h2 class="text-xl font-semibold mb-4">Add Transaction</h2>
       <template x-if="accounts.length > 0">
         <form @submit.prevent="addTransaction()" class="space-y-6">
@@ -443,22 +443,6 @@
             <button @click="closeAddModal" type="button" class="px-4 py-2 hover:bg-gray-100 border rounded-lg">Cancel</button>
             <button type="submit" class="px-4 py-2 bg-blue-400 hover:bg-blue-600 text-white rounded-lg">Save</button>
           </div>
-          <!-- <script>
-
-            const datePicker = document.getElementById('datePicker');
-            const startPicker = document.getElementById('startPicker');
-            const endPicker = document.getElementById('endPicker');
-            if (datePicker) {
-              const today = new Date();
-              const y = today.getFullYear();
-              const m = String(today.getMonth() + 1).padStart(2, '0');
-              const d = String(today.getDate()).padStart(2, '0');
-              const maxDate = `${y}-${m}-${d}`;
-              datePicker.setAttribute('max', maxDate);
-              startPicker.setAttribute('max', maxDate);
-              endPicker.setAttribute('min', maxDate);
-            };
-        </script> -->
         </form>
       </template>
       <template x-if="accounts.length === 0">
@@ -473,9 +457,9 @@
     x-cloak 
     x-show="showViewModal"
     @keydown.escape.window="closeViewModal"
-    class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center p-4 bg-black/50"
+    class="fixed h-screen top-0 left-0 inset-0 flex items-center justify-center p-4 bg-black/50" x-transition:enter="transition duration-100 ease-out" x-transition:enter-start=" opacity-0" x-transition:enter-end=" opacity-100" x-transition:leave="transition duration-100 ease-in" x-transition:leave-start=" opacity-100" x-transition:leave-end=" opacity-0"
   >
-    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" x-transition:enter="transition duration-100 ease-out" x-transition:enter-start="scale-90 opacity-0" x-transition:enter-end="scale-100 opacity-100" x-transition:leave="transition duration-100 ease-in" x-transition:leave-start="scale-100 opacity-100" x-transition:leave-end="scale-90 opacity-0" x-cloak x-show="showViewModal">
       <!-- Header -->
       <h2 class="text-2xl font-semibold mb-4">Transaction Details</h2>
 

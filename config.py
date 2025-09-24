@@ -28,7 +28,7 @@ WINDOW_FRONTEND = 'frontend/index.html'
 WINDOW_MIN_WIDTH = 740
 WINDOW_MIN_HEIGHT = 200
 
-# Logging (future use)
+# Logging
 LOGGING_ENABLED = True
 LOG_FILE = "ledgerly.log"
 

@@ -1,6 +1,17 @@
 import webview
 import config as cfg
 import backend.api as api
+import logging
+
+if cfg.LOGGING_ENABLED:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(cfg.LOG_FILE, mode="w"),   # file
+            logging.StreamHandler()           # terminal
+        ],
+    )
 
 
 app_api = api.LedgerlyApi()
