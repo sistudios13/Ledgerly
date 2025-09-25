@@ -5,7 +5,7 @@ import config as cfg
 import logging
 
 
-dbfile = cfg.DB_PATH
+dbfile = cfg.get("database.db_path", "db/your_ledgerly.db")
 
 
 
@@ -230,7 +230,7 @@ def w_add_account(name, category, initial_balance):
     con = sqlite3.connect(dbfile, check_same_thread=False)
     cur = con.cursor()
 
-    default_currency = cfg.DEFAULT_CURRENCY
+    default_currency = cfg.get("defaults.currency", "CAD")
     params = (name, category, initial_balance, initial_balance, default_currency)
     if len(name) > 0 and len(category) > 0:
         try:
@@ -397,8 +397,10 @@ def r_get_total_by_category(account_id, t_type):
 
 
     for row in rows:
-
-        amount = expand_recurring(row)[0][2]
+        if not expand_recurring(row):
+            amount = 0
+        else:
+            amount = expand_recurring(row)[0][2]
         category = row[4] if row[4] else "Other"
 
         if category not in totals:

@@ -1,0 +1,31 @@
+{
+  "dev_mode": true,
+  "database": {
+    "db_path": "db/ledgerly.db"
+  },
+  "defaults": {
+    "currency": "CAD",
+    "recurrence_frequency": "monthly"
+  },
+  "app": {
+    "name": "HII",
+    "version": "0.2",
+    "theme": "light"
+  },
+  "notifications": {
+    "enabled": true,
+    "low_balance_threshold": 50.0
+  },
+  "window": {
+    "width": 1000,
+    "height": 700,
+    "title": "Ledgerly",
+    "frontend": "frontend/index.html",
+    "min_width": 740,
+    "min_height": 200
+  },
+  "logging": {
+    "enabled": true,
+    "log_file": "ledgerly.log"
+  }
+}

@@ -4,7 +4,7 @@ import backend.db_manager as dbm
 
 class LedgerlyApi:
     def get_info(self):
-        return {"version": cfg.APP_VERSION}
+        return {"version": cfg.get("app.version")}
 
     def get_accounts(self):
         return dbm.r_get_accounts()
@@ -35,3 +35,9 @@ class LedgerlyApi:
 
     def get_total_by_category(self, account_id, t_type):
         return dbm.r_get_total_by_category(account_id, t_type)
+
+    def get_config(self):
+        return cfg.load_config()
+
+    def set_config(self, key_path, value):
+        return cfg.set(key_path, value)
