@@ -18,11 +18,11 @@
   },
   "window": {
     "width": 1000,
-    "height": 700,
+    "height": 400,
     "title": "Ledgerly",
     "frontend": "frontend/index.html",
-    "min_width": 740,
-    "min_height": 200
+    "min_width": "700",
+    "min_height": "200"
   },
   "logging": {
     "enabled": true,
