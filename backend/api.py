@@ -41,3 +41,9 @@ class LedgerlyApi:
 
     def set_config(self, key_path, value):
         return cfg.set(key_path, value)
+
+    def get_notifications(self):
+        return dbm.r_get_notifications()
+    
+    def mark_notification_as_read(self, notification_id):
+        return dbm.w_mark_notification_as_read(notification_id)

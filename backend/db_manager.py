@@ -2,34 +2,35 @@ import sqlite3
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 import config as cfg
+import backend.notification_manager as nm
 import logging
 import os, shutil
 from utils import resource_path
 
 
-def w_low_balance_warning(threshold):
-    pass
+# def get_user_db():
+#     # where to keep a writable copy
+#     user_data_dir = os.path.join(os.path.expanduser("~"), ".ledgerly")
+#     os.makedirs(user_data_dir, exist_ok=True)
+#
+#     db_dest = os.path.join(user_data_dir, "your_ledgerly.db")
+#
+#     if not os.path.exists(db_dest):
+#         # copy the bundled db as a template
+#         bundled_db = resource_path(cfg.get("db_path", "db/your_ledgerly.db"))
+#         shutil.copyfile(bundled_db, db_dest)
+#
+#     return db_dest
+#
+#
+# if cfg.get("dev_mode"):
+#     dbfile = cfg.get("db_path", "db/ledgerly.db")
+# else:
+#     dbfile = get_user_db()
 
 
-def get_user_db():
-    # where to keep a writable copy
-    user_data_dir = os.path.join(os.path.expanduser("~"), ".ledgerly")
-    os.makedirs(user_data_dir, exist_ok=True)
+dbfile = cfg.get("db_path", "db/ledgerly.db")
 
-    db_dest = os.path.join(user_data_dir, "your_ledgerly.db")
-
-    if not os.path.exists(db_dest):
-        # copy the bundled db as a template
-        bundled_db = resource_path(cfg.get("db_path", "db/your_ledgerly.db"))
-        shutil.copyfile(bundled_db, db_dest)
-
-    return db_dest
-
-
-if cfg.get("dev_mode"):
-    dbfile = cfg.get("db_path", "db/ledgerly.db")
-else:
-    dbfile = get_user_db()
 
 def r_get_accounts():
     con = sqlite3.connect(dbfile, check_same_thread=False)
@@ -101,6 +102,8 @@ def r_get_accounts():
             "current_balance": new_bal
         }
         info.append(row_dict)
+
+    nm.check_bal(info)
 
     return info
 
@@ -282,6 +285,9 @@ def w_delete_account(account_id):
             cur.execute(
                 "DELETE FROM transactions WHERE account_id = ?",
                 params)
+            cur.execute(
+                "DELETE FROM notifications WHERE account_id = ?",
+                params)
             con.commit()
             return True
         except Exception as e:
@@ -372,7 +378,7 @@ def r_get_balance_over_time(account_id):
     today = date.today()
     daily_balances = {}
 
-    # Build query
+
     sql = "SELECT * FROM transactions"
     params = ()
     if account_id:
@@ -435,3 +441,48 @@ def r_get_total_by_category(account_id, t_type):
     info = [numbers, labels]
 
     return info
+
+def r_get_notifications():
+
+    if bool(cfg.get("notifications.enabled", True)) is False:
+        return []
+
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
+    info = []
+    rows = cur.execute("SELECT * FROM notifications WHERE resolved = 0 ORDER BY created_at DESC").fetchall() # only unresolved
+
+    for row in rows:
+        row_dict = {
+            "id": row[0],
+            "type": row[1],
+            "message": row[2],
+            "status": row[3],
+            "account_id": row[6],
+            "created_at": row[5],
+            "resolved": bool(row[7])
+        }
+        info.append(row_dict)
+
+    return info
+
+
+def w_mark_notification_as_read(notification_id):
+    con = sqlite3.connect(dbfile, check_same_thread=False)
+    cur = con.cursor()
+
+    params = (notification_id,)
+    if notification_id:
+        try:
+            cur.execute(
+                "UPDATE notifications SET status = 'read' WHERE id = ?",
+                params)
+            con.commit()
+            return True
+        except Exception as e:
+            logging.warning(e)
+            return False
+    else:
+        logging.warning("Error: No notification id given")
+        return False

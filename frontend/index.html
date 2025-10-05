@@ -29,60 +29,14 @@
         accounts: [],
         transactions: [],
         transactionForm: { account_id: null, type: 'expense', amount: 0, category: '' },
-        notifications: [
-          {
-            "id": 1,
-            "type": "low_balance",
-            "account_id": 15,
-            "status": "read",
-            "message": "Your checking account balance has dropped below $50.",
-            "created_at": "10/4/2025",
-            "resolved": false
-          },
-          {
-            "id": 2,
-            "type": "upcoming_transaction",
-            "account_id": 14,
-            "status": "unread",
-            "message": "You have a $120 rent payment scheduled for October 10.",
-            "created_at": "10/9/2025",
-            "resolved": false
-          },
-          {
-            "id": 3,
-            "type": "goal_reached",
-            "account_id": 14,
-            "status": "unread",
-            "message": "Congrats! You've saved over $1,000 in your vacation fund.",
-            "created_at": "10/6/2025",
-            "resolved": true
-          },
-          {
-            "id": 4,
-            "type": "info",
-            "account_id": 15,
-            "status": "read",
-            "message": "Ledgerly version 0.2 update installed successfully.",
-            "created_at": "4/4/2025",
-            "resolved": true
-          },
-          {
-            "id": 5,
-            "type": "low_balance",
-            "account_id": 3,
-            "status": "unread",
-            "message": "Your savings account balance has dropped below $200.",
-            "created_at": "10/3/2025",
-            "resolved": false
-          }
-          
-        ],
+        notifications: [],
         sidebarOpen: false,
 
         async init() {
           await this.loadInfo();
           await this.loadAccounts();
           await this.loadTransactions();
+          await this.loadNotifications();
         },
 
         async loadInfo() {
@@ -102,6 +56,10 @@
           this.transactions = await window.pywebview.api.get_transactions();
         },
 
+        async loadNotifications() {
+          this.notifications = await window.pywebview.api.get_notifications();
+        },
+
         async addTransaction() {
           date = new Date()
           const success = await window.pywebview.api.add_transaction(
@@ -115,6 +73,7 @@
           this.transactionForm.category = '';
           await this.loadAccounts();
           await this.loadTransactions();
+          await this.loadNotifications();
           getData();
           if (success) {
 
@@ -170,8 +129,26 @@
         },
 
         formatDate(dateStr) {
-          const d = new Date(dateStr);
-          return d.toLocaleDateString();
+          if (!dateStr) return "";
+
+          // Handle YYYY-MM-DD (from <input type="date">)
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            const [y, m, d] = dateStr.split("-");
+            return `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`;
+          }
+
+          // Handle M/D/YYYY already
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+            return dateStr;
+          }
+
+          // Fallback: try Date parsing (last resort)
+          const dObj = new Date(dateStr);
+          if (!isNaN(dObj)) {
+            return `${dObj.getMonth() + 1}/${dObj.getDate()}/${dObj.getFullYear()}`;
+          }
+
+          return dateStr;
         },
 
         getAccountName(account_id) {
@@ -215,13 +192,11 @@
         <a href="transactions.html">Transactions</a>
       </div>
       <div class="text-black w-[161px] flex items-center justify-end gap-2">
-        <button class="size-8 relative" title="Notifiactions" @click="$store.ledgerly.sidebarOpen = !$store.ledgerly.sidebarOpen">
+        <button class="size-8 relative" title="Notifications" @click="$store.ledgerly.sidebarOpen = !$store.ledgerly.sidebarOpen">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
           </svg>
-          <div x-cloak class="absolute top-0 right-0 size-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center" x-show="$store.ledgerly.notifications.filter(n => n.status === 'unread').length > 0" x-text="$store.ledgerly.notifications.filter(n => n.status === 'unread').length">
-
-          </div>
+          <div x-cloak class="absolute top-0 right-0 size-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center" x-show="$store.ledgerly.notifications.filter(n => n.status === 'unread').length > 0" x-text="$store.ledgerly.notifications.filter(n => n.status === 'unread').length"></div>
         </button>
         <a href="settings.html" class="size-8 hover:rotate-45 transition-transform" title="Settings">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="">
@@ -443,12 +418,12 @@
   </footer>
 
   <!-- Notifications Sidebar -->
-   <div x-cloak x-show="$store.ledgerly.sidebarOpen" @click.away="$store.ledgerly.sidebarOpen = false" x-transition:enter="transition duration-150 ease-out" x-transition:enter-end="translate-x-0" x-transition:enter-start="translate-x-full" x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="translate-x-full" x-transition:leave-start="translate-x-0" class="fixed inset-y-0 right-0 z-50 w-96 bg-white shadow-lg border-l overflow-y-auto">
+  <div x-cloak x-show="$store.ledgerly.sidebarOpen" @click.away="$store.ledgerly.sidebarOpen = false" x-transition:enter="transition duration-150 ease-out" x-transition:enter-end="translate-x-0" x-transition:enter-start="translate-x-full" x-transition:leave="transition duration-150 ease-in" x-transition:leave-end="translate-x-full" x-transition:leave-start="translate-x-0" class="fixed inset-y-0 right-0 z-50 w-96 bg-white shadow-lg border-l overflow-y-auto">
     <div class="p-6">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold">Notifications</h2>
         <button @click="$store.ledgerly.sidebarOpen = false" class="size-8 text-gray-600 hover:text-black">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>
         </button>
@@ -456,11 +431,11 @@
       <div>
         <template x-if="$store.ledgerly.notifications.length > 0">
           <template x-for="notification in $store.ledgerly.notifications" :key="notification.id">
-            <div class="mb-4 p-4" :class="notification.status === 'unread' ? 'bg-blue-50 border-blue-400' : 'bg-gray-50 border-gray-200'">
+            <div tabindex="0" @click="notification.status = 'read'; window.pywebview.api.mark_notification_as_read(notification.id)" class="mb-4 p-4 border rounded-lg cursor-pointer transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400  hover:shadow-sm" :class="notification.status === 'unread' ? 'bg-blue-50' : 'bg-gray-50'">
               <div class="flex justify-between items-center pb-2">
                 <p class="text-xs text-gray-700 " x-text="$store.ledgerly.getAccountName(notification.account_id) || 'System'"></p>
-                <p class="text-xs text-gray-700 " x-text="notification.created_at"></p>
-                
+                <p class="text-xs text-gray-700 " x-text="$store.ledgerly.formatDate(notification.created_at)"></p>
+
               </div>
               <p class="text-sm text-gray-900 mb-1" x-text="notification.message"></p>
               <p class="text-xs text-gray-500" x-text="notification.status"></p>
@@ -472,11 +447,12 @@
             <img src="assets/turtle.png" alt="turtle" class="size-52">
             <p class="text-gray-600 text-center">No Notifications</p>
           </div>
-          
+
         </template>
       </div>
 
-   </div>
+    </div>
+  </div>
 
   <!-- Notifications -->
   <div x-data="{
