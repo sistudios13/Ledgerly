@@ -2,6 +2,10 @@ import webview
 import config as cfg
 import backend.api as api
 import logging
+from utils import resource_path
+
+
+frontend_path = resource_path(cfg.get("window.frontend"))
 
 if cfg.get("logging.enabled", False):
     logging.basicConfig(

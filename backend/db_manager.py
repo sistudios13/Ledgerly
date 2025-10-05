@@ -3,11 +3,33 @@ from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 import config as cfg
 import logging
+import os, shutil
+from utils import resource_path
 
 
-dbfile = cfg.get("database.db_path", "db/your_ledgerly.db")
+def w_low_balance_warning(threshold):
+    pass
 
 
+def get_user_db():
+    # where to keep a writable copy
+    user_data_dir = os.path.join(os.path.expanduser("~"), ".ledgerly")
+    os.makedirs(user_data_dir, exist_ok=True)
+
+    db_dest = os.path.join(user_data_dir, "your_ledgerly.db")
+
+    if not os.path.exists(db_dest):
+        # copy the bundled db as a template
+        bundled_db = resource_path(cfg.get("db_path", "db/your_ledgerly.db"))
+        shutil.copyfile(bundled_db, db_dest)
+
+    return db_dest
+
+
+if cfg.get("dev_mode"):
+    dbfile = cfg.get("db_path", "db/ledgerly.db")
+else:
+    dbfile = get_user_db()
 
 def r_get_accounts():
     con = sqlite3.connect(dbfile, check_same_thread=False)
